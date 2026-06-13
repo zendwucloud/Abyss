@@ -1,0 +1,1638 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>深淵迴廊 — 暗黑地牢探險</title>
+<style>
+  :root{
+    --blood:#8a1818; --blood-glow:#d43a2a;
+    --mana:#1d3f8a; --mana-glow:#3a6fd4;
+    --bone:#cfc3a8; --gold:#c9a14a;
+    --stone:#15120f; --stone-edge:#3a3128;
+  }
+  *{margin:0;padding:0;box-sizing:border-box;user-select:none;-webkit-user-select:none;}
+  html,body{width:100%;height:100%;overflow:hidden;background:#000;font-family:"Noto Serif TC","Songti TC",serif;}
+  #game{position:fixed;inset:0;cursor:crosshair;}
+
+  /* ===== 標題畫面 ===== */
+  #titleScreen{
+    position:fixed;inset:0;z-index:50;display:flex;flex-direction:column;
+    align-items:center;justify-content:center;gap:26px;
+    background:radial-gradient(ellipse at 50% 35%, #1a0f0a 0%, #050302 70%, #000 100%);
+  }
+  #titleScreen h1{
+    font-size:clamp(44px,9vw,92px);letter-spacing:.18em;color:var(--bone);
+    text-shadow:0 0 30px rgba(212,58,42,.45), 0 4px 0 #000;
+    font-weight:900;
+  }
+  #titleScreen .sub{color:#7a6a52;letter-spacing:.5em;font-size:14px;text-indent:.5em;}
+  #startBtn{
+    margin-top:10px;padding:14px 56px;font-size:20px;letter-spacing:.4em;text-indent:.4em;
+    background:linear-gradient(#2a1410,#150906);color:var(--bone);
+    border:1px solid #5a3a28;cursor:pointer;font-family:inherit;
+    box-shadow:0 0 24px rgba(212,58,42,.25), inset 0 0 18px rgba(0,0,0,.8);
+    transition:all .25s;
+  }
+  #startBtn:hover{color:#fff;border-color:var(--blood-glow);box-shadow:0 0 36px rgba(212,58,42,.55), inset 0 0 18px rgba(0,0,0,.8);}
+  #controls{color:#6a5c48;font-size:13px;line-height:2;text-align:center;letter-spacing:.1em;}
+  #controls b{color:#a8916c;}
+
+  /* ===== HUD ===== */
+  #hud{position:fixed;inset:0;pointer-events:none;z-index:10;display:none;}
+
+  .orb{
+    position:absolute;bottom:18px;width:118px;height:118px;border-radius:50%;
+    border:3px solid #4a3a28;overflow:hidden;
+    background:#0a0605;
+    box-shadow:0 0 18px #000, inset 0 0 22px rgba(0,0,0,.9);
+  }
+  .orb .fill{position:absolute;left:0;right:0;bottom:0;transition:height .25s;}
+  .orb .gloss{position:absolute;inset:0;border-radius:50%;
+    background:radial-gradient(circle at 32% 26%, rgba(255,255,255,.28) 0%, rgba(255,255,255,0) 34%);}
+  .orb .num{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;
+    color:#f0e6d2;font-size:17px;font-weight:700;text-shadow:0 1px 3px #000,0 0 8px #000;}
+  #hpOrb{left:18px;}
+  #hpOrb .fill{background:radial-gradient(circle at 50% 0%, var(--blood-glow), var(--blood) 65%, #4a0c0c);
+    box-shadow:0 0 26px rgba(212,58,42,.8);}
+  #mpOrb{right:18px;}
+  #mpOrb .fill{background:radial-gradient(circle at 50% 0%, var(--mana-glow), var(--mana) 65%, #0c1a4a);
+    box-shadow:0 0 26px rgba(58,111,212,.8);}
+
+  #bottomBar{
+    position:absolute;left:50%;bottom:18px;transform:translateX(-50%);
+    display:flex;gap:10px;align-items:flex-end;
+  }
+  .slot{
+    width:54px;height:54px;border:1px solid #4a3a28;background:rgba(10,7,5,.85);
+    display:flex;align-items:center;justify-content:center;position:relative;
+    box-shadow:inset 0 0 14px #000;font-size:24px;
+  }
+  .slot .key{position:absolute;top:2px;left:5px;font-size:10px;color:#8a7a5c;}
+  .slot .count{position:absolute;bottom:2px;right:5px;font-size:12px;color:var(--bone);font-weight:700;text-shadow:0 1px 2px #000;}
+
+  #xpWrap{position:absolute;left:50%;bottom:84px;transform:translateX(-50%);width:min(460px,55vw);}
+  #xpBar{height:7px;border:1px solid #4a3a28;background:#0a0705;box-shadow:inset 0 0 8px #000;}
+  #xpFill{height:100%;width:0%;background:linear-gradient(90deg,#6a5420,var(--gold));box-shadow:0 0 8px rgba(201,161,74,.7);transition:width .3s;}
+  #xpLabel{text-align:center;color:#9a8a66;font-size:11px;margin-top:3px;letter-spacing:.2em;}
+
+  #topInfo{position:absolute;top:14px;left:50%;transform:translateX(-50%);text-align:center;}
+  #floorLabel{color:var(--bone);font-size:20px;letter-spacing:.3em;text-shadow:0 0 14px rgba(212,58,42,.5),0 2px 4px #000;}
+  #goldLabel{color:var(--gold);font-size:14px;margin-top:4px;text-shadow:0 1px 3px #000;}
+
+  #minimap{position:absolute;top:14px;right:14px;border:1px solid #4a3a28;background:rgba(5,3,2,.8);box-shadow:0 0 14px #000;}
+
+  #msgLog{position:absolute;left:18px;top:14px;max-width:300px;}
+  .msg{color:#b8a888;font-size:13px;text-shadow:0 1px 2px #000;margin-bottom:4px;opacity:1;transition:opacity 1s;letter-spacing:.05em;}
+
+  #bossBar{position:absolute;top:64px;left:50%;transform:translateX(-50%);width:min(420px,60vw);display:none;}
+  #bossName{text-align:center;color:#e0c8c0;font-size:14px;letter-spacing:.4em;margin-bottom:4px;text-shadow:0 0 10px rgba(212,58,42,.8);}
+  #bossHp{height:10px;border:1px solid #5a2a20;background:#100604;}
+  #bossHpFill{height:100%;width:100%;background:linear-gradient(90deg,#5a1010,var(--blood-glow));box-shadow:0 0 12px rgba(212,58,42,.7);transition:width .2s;}
+
+  .floater{
+    position:fixed;pointer-events:none;font-weight:900;font-size:18px;z-index:20;
+    text-shadow:0 1px 2px #000,0 0 6px #000;transform:translate(-50%,-50%);
+    font-family:"Noto Serif TC",serif;
+  }
+
+  #deathScreen,#winScreen{
+    position:fixed;inset:0;z-index:60;display:none;flex-direction:column;
+    align-items:center;justify-content:center;gap:20px;background:rgba(0,0,0,0);
+    transition:background 2s;
+  }
+  #deathScreen h1{font-size:clamp(40px,8vw,80px);color:var(--blood-glow);letter-spacing:.3em;text-shadow:0 0 40px rgba(212,58,42,.6);opacity:0;transition:opacity 2s;}
+  #winScreen h1{font-size:clamp(36px,7vw,68px);color:var(--gold);letter-spacing:.25em;text-shadow:0 0 40px rgba(201,161,74,.6);opacity:0;transition:opacity 2s;}
+  .endStats{color:#9a8a66;font-size:15px;line-height:2;text-align:center;opacity:0;transition:opacity 2s 1s;}
+  .againBtn{
+    padding:12px 44px;font-size:17px;letter-spacing:.3em;text-indent:.3em;background:#150906;color:var(--bone);
+    border:1px solid #5a3a28;cursor:pointer;font-family:inherit;opacity:0;transition:opacity 2s 1.5s;pointer-events:none;
+  }
+  .againBtn.show{opacity:1;pointer-events:auto;}
+  .againBtn:hover{border-color:var(--blood-glow);color:#fff;}
+
+  #vignette{position:fixed;inset:0;pointer-events:none;z-index:5;transition:opacity 1.2s;
+    background:radial-gradient(ellipse at center, transparent 68%, rgba(0,0,0,.55) 100%);}
+  #hurtFlash{position:fixed;inset:0;pointer-events:none;z-index:6;opacity:0;
+    background:radial-gradient(ellipse at center, transparent 40%, rgba(160,10,10,.5) 100%);transition:opacity .4s;}
+
+  /* ===== 明亮城鎮模式 ===== */
+  body.town #vignette{opacity:0;}
+  body.town #minimap{display:none;}
+
+  /* ===== 互動提示 ===== */
+  #interactPrompt{
+    position:fixed;left:50%;bottom:120px;transform:translateX(-50%);z-index:14;display:none;
+    background:rgba(10,7,4,.85);border:1px solid #5a3a28;color:var(--bone);
+    font-size:14px;padding:8px 20px;letter-spacing:.12em;box-shadow:0 0 16px rgba(0,0,0,.6);
+  }
+  #interactPrompt b{color:var(--gold);}
+
+  /* ===== 居民對話泡泡 ===== */
+  .speechBubble{
+    position:fixed;z-index:18;pointer-events:none;transform:translate(-50%,-100%);
+    background:rgba(22,17,11,.94);border:1px solid #4a3a28;color:#d8ccb0;
+    font-size:12px;padding:5px 11px;border-radius:11px;white-space:nowrap;
+    box-shadow:0 2px 8px rgba(0,0,0,.55);
+  }
+  .speechBubble::after{content:"";position:absolute;left:50%;bottom:-7px;transform:translateX(-50%);
+    border-left:6px solid transparent;border-right:6px solid transparent;border-top:7px solid #4a3a28;}
+
+  /* ===== 商店面板 ===== */
+  #shopPanel{position:fixed;inset:0;z-index:55;display:none;align-items:center;justify-content:center;
+    background:rgba(5,4,3,.6);pointer-events:auto;}
+  .shopBox{width:min(540px,92vw);max-height:84vh;overflow:auto;padding:22px 24px;
+    background:linear-gradient(#1c140d,#100a05);border:1px solid #5a3a28;
+    box-shadow:0 0 44px rgba(0,0,0,.8), inset 0 0 30px rgba(0,0,0,.55);}
+  .shopBox::-webkit-scrollbar{width:8px;} .shopBox::-webkit-scrollbar-thumb{background:#3a2c1e;}
+  .shopGold{float:right;color:var(--gold);font-size:15px;}
+  .shopTitle{color:var(--bone);font-size:22px;letter-spacing:.18em;}
+  .shopNpc{color:#8a7a5c;font-size:13px;margin:6px 0 2px;letter-spacing:.08em;}
+  .shopGreet{color:#a8946c;font-size:13px;font-style:italic;margin:0 0 16px;line-height:1.6;}
+  .itemRow{display:flex;align-items:center;gap:14px;padding:11px 12px;margin-bottom:8px;
+    border:1px solid #3a2c1e;background:rgba(0,0,0,.3);}
+  .itemIcon{font-size:24px;width:32px;text-align:center;}
+  .itemInfo{flex:1;}
+  .itemName{color:var(--bone);font-size:15px;}
+  .itemDesc{color:#8a7a5c;font-size:12px;margin-top:2px;}
+  .buyBtn{padding:8px 16px;border:1px solid #5a3a28;background:#241308;color:var(--gold);
+    font-family:inherit;cursor:pointer;font-size:13px;white-space:nowrap;transition:all .2s;}
+  .buyBtn:hover:not(:disabled){border-color:var(--gold);color:#fff;background:#2e1a0a;}
+  .buyBtn:disabled{opacity:.45;cursor:default;}
+  .buyBtn.owned{color:#7aa05a;border-color:#3a5a2a;background:#11180c;}
+  .closeBtn{display:block;margin:16px auto 0;padding:8px 32px;border:1px solid #4a3a28;
+    background:#150b06;color:var(--bone);font-family:inherit;cursor:pointer;letter-spacing:.25em;text-indent:.25em;}
+  .closeBtn:hover{border-color:var(--blood-glow);color:#fff;}
+
+  /* ===== 對話框 ===== */
+  #dialoguePanel{position:fixed;left:0;right:0;bottom:0;z-index:56;display:none;cursor:pointer;}
+  .dlgBox{width:min(720px,94vw);margin:0 auto 42px;padding:18px 26px;
+    background:linear-gradient(#1a120b,#0c0704);border:1px solid #5a3a28;
+    box-shadow:0 0 32px rgba(0,0,0,.7);}
+  .dlgName{color:var(--gold);font-size:15px;letter-spacing:.15em;margin-bottom:9px;}
+  .dlgText{color:#e4d8be;font-size:16px;line-height:1.85;min-height:56px;}
+  .dlgHint{text-align:right;color:#7a6a52;font-size:12px;margin-top:8px;letter-spacing:.1em;}
+</style>
+</head>
+<body>
+<div id="game"></div>
+<div id="vignette"></div>
+<div id="hurtFlash"></div>
+
+<div id="titleScreen">
+  <h1>深淵迴廊</h1>
+  <div class="sub">CORRIDORS OF THE ABYSS</div>
+  <button id="startBtn">踏上旅程</button>
+  <div id="controls">
+    <b>滑鼠左鍵</b> 移動/攻擊 &nbsp;|&nbsp; <b>右鍵</b> 火球術(耗魔)<br>
+    <b>W A S D</b> 移動 &nbsp;|&nbsp; <b>E</b> 互動/傳送 &nbsp;|&nbsp; <b>1</b>/<b>2</b> 喝藥水<br>
+    在灰燼鎮整備,踏入五層地牢,擊敗深淵領主
+  </div>
+</div>
+
+<div id="hud">
+  <div id="topInfo">
+    <div id="floorLabel">地牢 第一層</div>
+    <div id="goldLabel">⬩ 0 金幣</div>
+    <div id="gearLabel" style="color:#9a8a66;font-size:12px;margin-top:3px;text-shadow:0 1px 2px #000;"></div>
+  </div>
+  <div id="bossBar">
+    <div id="bossName">深淵領主</div>
+    <div id="bossHp"><div id="bossHpFill"></div></div>
+  </div>
+  <div id="msgLog"></div>
+  <canvas id="minimap" width="148" height="148"></canvas>
+
+  <div class="orb" id="hpOrb"><div class="fill" id="hpFill"></div><div class="gloss"></div><div class="num" id="hpNum"></div></div>
+  <div class="orb" id="mpOrb"><div class="fill" id="mpFill"></div><div class="gloss"></div><div class="num" id="mpNum"></div></div>
+
+  <div id="xpWrap">
+    <div id="xpBar"><div id="xpFill"></div></div>
+    <div id="xpLabel">等級 1</div>
+  </div>
+
+  <div id="bottomBar">
+    <div class="slot"><span class="key">1</span>🧪<span class="count" id="hpPotCount">0</span></div>
+    <div class="slot"><span class="key">2</span>🔮<span class="count" id="mpPotCount">0</span></div>
+  </div>
+</div>
+
+<div id="interactPrompt"></div>
+
+<div id="shopPanel"><div class="shopBox" id="shopBox"></div></div>
+
+<div id="dialoguePanel">
+  <div class="dlgBox">
+    <div class="dlgName" id="dlgName"></div>
+    <div class="dlgText" id="dlgText"></div>
+    <div class="dlgHint">點擊 / 按 E 繼續 ▼</div>
+  </div>
+</div>
+
+<div id="deathScreen">
+  <h1>你已倒下</h1>
+  <div class="endStats" id="deathStats"></div>
+  <button class="againBtn" onclick="revive()">在灰燼鎮甦醒</button>
+</div>
+<div id="winScreen">
+  <h1>深淵已被淨化</h1>
+  <div class="endStats" id="winStats"></div>
+  <button class="againBtn" onclick="location.reload()">再入深淵</button>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script>
+"use strict";
+/* ============================================================
+   深淵迴廊 — 原創 3D 暗黑風地牢 ARPG
+   ============================================================ */
+
+// ---------- 基本設定 ----------
+const TILE = 2;                 // 每格世界尺寸
+const MAP = 44;                 // 地圖格數
+const MAX_FLOOR = 5;
+
+let scene, camera, renderer, clock;
+let dungeon = null;             // 目前樓層資料
+let player = null;
+let enemies = [];
+let pickups = [];
+let projectiles = [];
+let floaters = [];
+let particles = [];
+let torchLights = [];
+let floorNum = 1;
+let kills = 0, totalGold = 0;
+let gameState = "title";        // title | play | shop | dialogue | dead | win
+let worldMode = "dungeon";      // town | dungeon
+let ambientLight, sunLight;     // 動態調整的光源
+let town = null, townGroup = null;
+let npcs = [];                  // 城鎮居民與鎮長
+let bubbles = [];               // 居民頭頂對話泡泡
+let nearInteractable = null;    // 玩家附近可互動目標
+let interactCd = 0;
+let storyToldOnce = false;
+let dialogue = null;            // {speaker, lines, idx}
+const keys = {};
+const raycaster = new THREE.Raycaster();
+const mouseNDC = new THREE.Vector2();
+const groundPlane = new THREE.Plane(new THREE.Vector3(0,1,0), 0);
+
+const FLOOR_NAMES = ["第一層","第二層","第三層","第四層","最底層"];
+const $ = id => document.getElementById(id);
+
+// ---------- 初始化 ----------
+function initThree(){
+  scene = new THREE.Scene();
+  scene.background = new THREE.Color(0x030202);
+  scene.fog = new THREE.FogExp2(0x050403, 0.032);
+
+  camera = new THREE.PerspectiveCamera(46, innerWidth/innerHeight, 0.1, 120);
+
+  renderer = new THREE.WebGLRenderer({antialias:true});
+  renderer.setSize(innerWidth, innerHeight);
+  renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
+  renderer.shadowMap.enabled = true;
+  renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+  $("game").appendChild(renderer.domElement);
+
+  ambientLight = new THREE.AmbientLight(0x4a3d2e, 0.95);
+  scene.add(ambientLight);
+  sunLight = new THREE.DirectionalLight(0x3a4658, 0.4);
+  sunLight.position.set(18, 34, 14);
+  sunLight.castShadow = true;
+  sunLight.shadow.mapSize.set(1024, 1024);
+  sunLight.shadow.camera.left = -40; sunLight.shadow.camera.right = 40;
+  sunLight.shadow.camera.top = 40; sunLight.shadow.camera.bottom = -40;
+  sunLight.shadow.camera.far = 90;
+  scene.add(sunLight);
+
+  clock = new THREE.Clock();
+  addEventListener("resize", ()=>{
+    camera.aspect = innerWidth/innerHeight;
+    camera.updateProjectionMatrix();
+    renderer.setSize(innerWidth, innerHeight);
+  });
+}
+
+// ---------- 明暗切換 ----------
+function applyLighting(mode){
+  if(mode==="town"){
+    scene.background = new THREE.Color(0x9ec3dc);
+    scene.fog = new THREE.FogExp2(0xc2d4de, 0.011);
+    ambientLight.color.setHex(0xf2ecda); ambientLight.intensity = 1.2;
+    sunLight.color.setHex(0xfff0d4); sunLight.intensity = 1.1;
+    document.body.classList.add("town");
+  } else {
+    scene.background = new THREE.Color(0x050403);
+    scene.fog = new THREE.FogExp2(0x050403, 0.032);
+    ambientLight.color.setHex(0x4a3d2e); ambientLight.intensity = 0.95;
+    sunLight.color.setHex(0x3a4658); sunLight.intensity = 0.4;
+    document.body.classList.remove("town");
+  }
+}
+
+// ---------- 地牢生成 ----------
+function genDungeon(){
+  // 1=牆 0=地板
+  const grid = Array.from({length:MAP},()=>Array(MAP).fill(1));
+  const rooms = [];
+  const roomCount = 8 + Math.min(floorNum,4);
+
+  for(let i=0;i<roomCount*30 && rooms.length<roomCount;i++){
+    const w = 4+Math.floor(Math.random()*5);
+    const h = 4+Math.floor(Math.random()*5);
+    const x = 2+Math.floor(Math.random()*(MAP-w-4));
+    const y = 2+Math.floor(Math.random()*(MAP-h-4));
+    if(rooms.some(r=>x<r.x+r.w+2 && x+w+2>r.x && y<r.y+r.h+2 && y+h+2>r.y)) continue;
+    rooms.push({x,y,w,h,cx:Math.floor(x+w/2),cy:Math.floor(y+h/2)});
+  }
+  rooms.forEach(r=>{
+    for(let yy=r.y;yy<r.y+r.h;yy++)
+      for(let xx=r.x;xx<r.x+r.w;xx++) grid[yy][xx]=0;
+  });
+  // 走廊
+  for(let i=1;i<rooms.length;i++){
+    let a=rooms[i-1], b=rooms[i];
+    let x=a.cx, y=a.cy;
+    while(x!==b.cx){ grid[y][x]=0; grid[y+1]&&(grid[y+1][x]=Math.min(grid[y+1][x],grid[y+1][x])); x+=Math.sign(b.cx-x);}
+    while(y!==b.cy){ grid[y][x]=0; y+=Math.sign(b.cy-y);}
+    grid[y][x]=0;
+  }
+  return {grid, rooms, explored:Array.from({length:MAP},()=>Array(MAP).fill(false))};
+}
+
+const walkable = (gx,gy)=> gx>=0&&gy>=0&&gx<MAP&&gy<MAP&&dungeon.grid[gy][gx]===0;
+const toWorld = (gx,gy)=> new THREE.Vector3((gx-MAP/2)*TILE+TILE/2, 0, (gy-MAP/2)*TILE+TILE/2);
+const toGrid = v => [Math.floor((v.x+MAP*TILE/2)/TILE), Math.floor((v.z+MAP*TILE/2)/TILE)];
+
+// 半徑碰撞檢查(依世界模式分派)
+function canStand(x,z,r=0.55){
+  return worldMode==="town" ? canStandTown(x,z,r) : canStandDungeon(x,z,r);
+}
+function canStandDungeon(x,z,r){
+  for(const [dx,dz] of [[r,0],[-r,0],[0,r],[0,-r],[r*0.7,r*0.7],[-r*0.7,r*0.7],[r*0.7,-r*0.7],[-r*0.7,-r*0.7]]){
+    const gx=Math.floor((x+dx+MAP*TILE/2)/TILE), gz=Math.floor((z+dz+MAP*TILE/2)/TILE);
+    if(!walkable(gx,gz)) return false;
+  }
+  return true;
+}
+function canStandTown(x,z,r){
+  if(!town) return true;
+  if(Math.abs(x) > town.bound-r || Math.abs(z) > town.bound-r) return false;
+  for(const c of town.colliders){
+    if(x > c.minX-r && x < c.maxX+r && z > c.minZ-r && z < c.maxZ+r) return false;
+  }
+  return true;
+}
+function tryMove(obj, dx, dz){
+  const r = obj.userData.radius||0.55;
+  if(canStand(obj.position.x+dx, obj.position.z+dz, r)){ obj.position.x+=dx; obj.position.z+=dz; return true;}
+  if(canStand(obj.position.x+dx, obj.position.z, r)){ obj.position.x+=dx; return true;}
+  if(canStand(obj.position.x, obj.position.z+dz, r)){ obj.position.z+=dz; return true;}
+  return false;
+}
+
+// ---------- 場景建構 ----------
+let levelGroup = null;
+function buildLevel(){
+  if(levelGroup){ scene.remove(levelGroup); }
+  torchLights = [];
+  levelGroup = new THREE.Group();
+
+  const g = dungeon.grid;
+  // 地板與牆 — 使用 InstancedMesh
+  const floorTiles=[], wallTiles=[];
+  for(let y=0;y<MAP;y++)for(let x=0;x<MAP;x++){
+    if(g[y][x]===0) floorTiles.push([x,y]);
+    else{
+      // 只建可見的牆(鄰近地板)
+      const near=[[1,0],[-1,0],[0,1],[0,-1],[1,1],[-1,-1],[1,-1],[-1,1]].some(([dx,dy])=>{
+        const nx=x+dx,ny=y+dy; return nx>=0&&ny>=0&&nx<MAP&&ny<MAP&&g[ny][nx]===0;
+      });
+      if(near) wallTiles.push([x,y]);
+    }
+  }
+
+  const floorGeo = new THREE.BoxGeometry(TILE,0.2,TILE);
+  const floorMat = new THREE.MeshStandardMaterial({color:0x2a241c, roughness:0.95});
+  const floorMesh = new THREE.InstancedMesh(floorGeo, floorMat, floorTiles.length);
+  floorMesh.receiveShadow = true;
+  const m4 = new THREE.Matrix4(); const col = new THREE.Color();
+  floorTiles.forEach(([x,y],i)=>{
+    const p = toWorld(x,y);
+    m4.makeTranslation(p.x, -0.1, p.z);
+    floorMesh.setMatrixAt(i,m4);
+    const shade = 0.78+Math.random()*0.44;
+    col.setRGB(0.165*shade, 0.14*shade, 0.105*shade);
+    floorMesh.setColorAt(i,col);
+  });
+  levelGroup.add(floorMesh);
+
+  const wallGeo = new THREE.BoxGeometry(TILE, 3.2, TILE);
+  const wallMat = new THREE.MeshStandardMaterial({color:0x3a3128, roughness:0.9});
+  const wallMesh = new THREE.InstancedMesh(wallGeo, wallMat, wallTiles.length);
+  wallMesh.castShadow = true; wallMesh.receiveShadow = true;
+  wallTiles.forEach(([x,y],i)=>{
+    const p = toWorld(x,y);
+    m4.makeTranslation(p.x, 1.6, p.z);
+    wallMesh.setMatrixAt(i,m4);
+    const shade = 0.7+Math.random()*0.5;
+    col.setRGB(0.21*shade, 0.175*shade, 0.135*shade);
+    wallMesh.setColorAt(i,col);
+  });
+  levelGroup.add(wallMesh);
+
+  // 火把(每個房間角落)
+  dungeon.rooms.forEach((r,i)=>{
+    if(i%1===0){
+      const p = toWorld(r.cx, r.y); // 房間上緣
+      addTorch(p.x, p.z - TILE*0.0 + 0.0, r);
+    }
+  });
+
+  // 出口樓梯(最後一個房間)/ 最底層放 BOSS 不放樓梯
+  const last = dungeon.rooms[dungeon.rooms.length-1];
+  if(floorNum < MAX_FLOOR){
+    const sp = toWorld(last.cx,last.cy);
+    const stairs = new THREE.Group();
+    for(let s=0;s<4;s++){
+      const step = new THREE.Mesh(
+        new THREE.BoxGeometry(1.6,0.22,0.5),
+        new THREE.MeshStandardMaterial({color:0x18120c, roughness:0.8})
+      );
+      step.position.set(0,-0.11-s*0.18, -s*0.45);
+      stairs.add(step);
+    }
+    const glow = new THREE.PointLight(0x7a2aa0, 1.2, 7);
+    glow.position.y = 0.6;
+    stairs.add(glow);
+    const ring = new THREE.Mesh(new THREE.RingGeometry(0.9,1.15,24),
+      new THREE.MeshBasicMaterial({color:0x9a4ad0, side:THREE.DoubleSide, transparent:true, opacity:0.55}));
+    ring.rotation.x = -Math.PI/2; ring.position.y = 0.03;
+    stairs.add(ring);
+    stairs.position.copy(sp);
+    stairs.userData.isStairs = true;
+    levelGroup.add(stairs);
+    dungeon.stairsPos = sp;
+  } else dungeon.stairsPos = null;
+
+  // 回程傳送門(起始房附近,可回灰燼鎮)
+  const r0 = dungeon.rooms[0];
+  let rpPos = toWorld(r0.cx, r0.cy);
+  for(const [dx,dy] of [[2,0],[-2,0],[0,2],[0,-2],[2,2],[-2,-2]]){
+    if(walkable(r0.cx+dx, r0.cy+dy)){ rpPos = toWorld(r0.cx+dx, r0.cy+dy); break; }
+  }
+  const rp = makePortal(0x6a4ad0);
+  rp.scale.setScalar(0.8);
+  rp.position.copy(rpPos);
+  levelGroup.add(rp);
+  dungeon.returnPortalPos = rpPos.clone();
+  dungeon.returnPortalMesh = rp;
+
+  scene.add(levelGroup);
+}
+
+function addTorch(x,z,room){
+  const grp = new THREE.Group();
+  const stick = new THREE.Mesh(new THREE.CylinderGeometry(0.05,0.07,0.8,6),
+    new THREE.MeshStandardMaterial({color:0x2a1a0c}));
+  stick.position.y=1.5;
+  const flame = new THREE.Mesh(new THREE.SphereGeometry(0.16,8,8),
+    new THREE.MeshBasicMaterial({color:0xff8830}));
+  flame.position.y=1.95;
+  const light = new THREE.PointLight(0xff8a3a, 1.9, 15, 1.5);
+  light.position.y=2.0;
+  grp.add(stick,flame,light);
+  grp.position.set(x,0,z);
+  grp.userData={flame,light,seed:Math.random()*10};
+  torchLights.push(grp);
+  levelGroup.add(grp);
+}
+
+// ---------- 角色模型 ----------
+function makeHero(){
+  const grp = new THREE.Group();
+  const armorMat = new THREE.MeshStandardMaterial({color:0x6a6a72, roughness:0.45, metalness:0.55});
+  const clothMat = new THREE.MeshStandardMaterial({color:0x4a1414, roughness:0.9});
+  const skinMat  = new THREE.MeshStandardMaterial({color:0xc9a884, roughness:0.8});
+
+  const body = new THREE.Mesh(new THREE.CylinderGeometry(0.3,0.38,0.85,8), armorMat);
+  body.position.y=0.95; body.castShadow=true;
+  const skirt = new THREE.Mesh(new THREE.CylinderGeometry(0.38,0.46,0.4,8), clothMat);
+  skirt.position.y=0.42;
+  const head = new THREE.Mesh(new THREE.SphereGeometry(0.22,10,10), skinMat);
+  head.position.y=1.62;
+  const helm = new THREE.Mesh(new THREE.CylinderGeometry(0.24,0.26,0.18,8), armorMat);
+  helm.position.y=1.74;
+  // 劍臂
+  const swordArm = new THREE.Group();
+  const arm = new THREE.Mesh(new THREE.CylinderGeometry(0.08,0.08,0.5,6), armorMat);
+  arm.position.y=-0.25;
+  const blade = new THREE.Mesh(new THREE.BoxGeometry(0.07,1.0,0.16),
+    new THREE.MeshStandardMaterial({color:0xc8ccd8, metalness:0.85, roughness:0.25}));
+  blade.position.set(0,-0.85,0.18);
+  const guard = new THREE.Mesh(new THREE.BoxGeometry(0.3,0.06,0.08), new THREE.MeshStandardMaterial({color:0x8a6a2a, metalness:0.7}));
+  guard.position.set(0,-0.5,0.16);
+  swordArm.add(arm,blade,guard);
+  swordArm.position.set(0.42,1.35,0);
+  swordArm.rotation.z = -0.4;
+  // 盾臂
+  const shieldArm = new THREE.Mesh(new THREE.CylinderGeometry(0.08,0.08,0.5,6), armorMat);
+  shieldArm.position.set(-0.4,1.1,0); shieldArm.rotation.z=0.35;
+
+  grp.add(body,skirt,head,helm,swordArm,shieldArm);
+  grp.traverse(o=>{if(o.isMesh)o.castShadow=true;});
+  grp.userData.swordArm = swordArm;
+
+  // 主角光源(火把照明)
+  const lamp = new THREE.PointLight(0xffc888, 2.6, 22, 1.3);
+  lamp.position.y = 2.8;
+  lamp.castShadow = true;
+  lamp.shadow.mapSize.set(512,512);
+  grp.add(lamp);
+  // 近身柔光,讓主角周圍維持正常亮度
+  const halo = new THREE.PointLight(0xffd8a0, 1.4, 9, 2);
+  halo.position.y = 1.4;
+  grp.add(halo);
+  return grp;
+}
+
+const ENEMY_TYPES = {
+  skeleton:{name:"腐骨兵", hp:26, dmg:7, speed:2.6, xp:14, color:0xb8ae96, scale:1, gold:[1,5], attackRange:1.4, aggro:9},
+  shade:{name:"暗影魔", hp:18, dmg:10, speed:3.6, xp:18, color:0x3a2a5a, scale:0.9, gold:[2,6], attackRange:1.3, aggro:11},
+  brute:{name:"穴居蠻怪", hp:55, dmg:14, speed:1.9, xp:30, color:0x5a4a2a, scale:1.45, gold:[4,10], attackRange:1.7, aggro:8},
+  boss:{name:"深淵領主", hp:420, dmg:22, speed:2.4, xp:300, color:0x6a1418, scale:2.3, gold:[80,120], attackRange:2.4, aggro:30}
+};
+
+function makeEnemyMesh(type, def){
+  const grp = new THREE.Group();
+  const mat = new THREE.MeshStandardMaterial({color:def.color, roughness:0.85});
+  const dark = new THREE.MeshStandardMaterial({color:0x111111, roughness:0.9});
+  const body = new THREE.Mesh(new THREE.CylinderGeometry(0.28,0.4,0.9,7), mat);
+  body.position.y=0.9;
+  const head = new THREE.Mesh(new THREE.SphereGeometry(0.24,8,8), mat);
+  head.position.y=1.55;
+  // 眼睛
+  const eyeMat = new THREE.MeshBasicMaterial({color: type==="boss"?0xff3a1a:0xff6a2a});
+  const e1=new THREE.Mesh(new THREE.SphereGeometry(0.045,6,6),eyeMat);
+  const e2=e1.clone();
+  e1.position.set(0.09,1.6,0.2); e2.position.set(-0.09,1.6,0.2);
+  const armL = new THREE.Mesh(new THREE.CylinderGeometry(0.07,0.06,0.6,5), mat);
+  armL.position.set(0.36,1.05,0.1); armL.rotation.z=-0.5; armL.rotation.x=-0.5;
+  const armR = armL.clone(); armR.position.x=-0.36; armR.rotation.z=0.5;
+  grp.add(body,head,e1,e2,armL,armR);
+  if(type==="boss"){
+    // 角
+    const hornMat = new THREE.MeshStandardMaterial({color:0x2a1a10, roughness:0.7});
+    const h1 = new THREE.Mesh(new THREE.ConeGeometry(0.09,0.5,6), hornMat);
+    h1.position.set(0.18,1.85,0); h1.rotation.z=-0.4;
+    const h2 = h1.clone(); h2.position.x=-0.18; h2.rotation.z=0.4;
+    grp.add(h1,h2);
+    const aura = new THREE.PointLight(0xd43a2a, 1.4, 9);
+    aura.position.y=1.4; grp.add(aura);
+  }
+  grp.scale.setScalar(def.scale);
+  grp.traverse(o=>{if(o.isMesh)o.castShadow=true;});
+  return grp;
+}
+
+function spawnEnemies(){
+  enemies = [];
+  const diff = 1 + (floorNum-1)*0.35;
+  dungeon.rooms.forEach((r,i)=>{
+    if(i===0) return; // 起始房不刷怪
+    const isLast = i===dungeon.rooms.length-1;
+    if(isLast && floorNum===MAX_FLOOR){
+      spawnEnemy("boss", toWorld(r.cx,r.cy), diff);
+      return;
+    }
+    const n = 2+Math.floor(Math.random()*3)+Math.floor(floorNum/2);
+    for(let k=0;k<n;k++){
+      const gx = r.x+1+Math.floor(Math.random()*(r.w-2));
+      const gy = r.y+1+Math.floor(Math.random()*(r.h-2));
+      const roll = Math.random();
+      let type = "skeleton";
+      if(floorNum>=2 && roll<0.3) type="shade";
+      if(floorNum>=3 && roll>0.78) type="brute";
+      spawnEnemy(type, toWorld(gx,gy), diff);
+    }
+  });
+}
+
+function spawnEnemy(type, pos, diff){
+  const def = ENEMY_TYPES[type];
+  const mesh = makeEnemyMesh(type, def);
+  mesh.position.copy(pos);
+  mesh.userData = {
+    type, name:def.name,
+    hp:def.hp*diff, maxHp:def.hp*diff,
+    dmg:def.dmg*diff, speed:def.speed, xp:Math.round(def.xp*diff),
+    gold:def.gold, attackRange:def.attackRange, aggro:def.aggro,
+    state:"idle", atkCd:0, radius:0.45*def.scale, hitFlash:0,
+    isEnemy:true, dying:0, bobSeed:Math.random()*10
+  };
+  scene.add(mesh);
+  enemies.push(mesh);
+  if(type==="boss"){ $("bossBar").style.display="block"; }
+}
+
+// ---------- 掉落物 ----------
+function spawnPickup(kind, pos){
+  let mesh;
+  if(kind==="gold"){
+    mesh = new THREE.Mesh(new THREE.CylinderGeometry(0.16,0.16,0.06,10),
+      new THREE.MeshStandardMaterial({color:0xc9a14a, metalness:0.8, roughness:0.3}));
+  }else if(kind==="hpPot"){
+    mesh = new THREE.Mesh(new THREE.SphereGeometry(0.18,8,8),
+      new THREE.MeshStandardMaterial({color:0xd43a2a, emissive:0x5a0a0a}));
+  }else{
+    mesh = new THREE.Mesh(new THREE.SphereGeometry(0.18,8,8),
+      new THREE.MeshStandardMaterial({color:0x3a6fd4, emissive:0x0a1a5a}));
+  }
+  mesh.position.copy(pos);
+  mesh.position.x += (Math.random()-0.5)*0.8;
+  mesh.position.z += (Math.random()-0.5)*0.8;
+  mesh.position.y = 0.25;
+  mesh.userData = {kind, t:Math.random()*10};
+  scene.add(mesh);
+  pickups.push(mesh);
+}
+
+// ---------- 玩家 ----------
+function initPlayer(spawnPos){
+  const mesh = makeHero();
+  mesh.position.copy(spawnPos);
+  mesh.userData.radius = 0.5;
+  if(player && player.mesh) scene.remove(player.mesh);
+  scene.add(mesh);
+  const old = player;
+  player = {
+    mesh,
+    baseMaxHp: old? old.baseMaxHp : 100,
+    baseMaxMp: old? old.baseMaxMp : 50,
+    levelBonus: old? old.levelBonus : 0,       // 攻擊:來自等級
+    weaponDmg:  old? old.weaponDmg  : 12,       // 攻擊:來自武器
+    weaponId:   old? old.weaponId   : null,
+    weaponName: old? old.weaponName : "生鏽短劍",
+    armorDef:   old? old.armorDef   : 0,        // 防禦:減免傷害
+    armorHp:    old? old.armorHp    : 0,        // 生命上限加成
+    armorId:    old? old.armorId    : null,
+    armorName:  old? old.armorName  : "破舊布衣",
+    hp: old? old.hp : 100, maxHp:100, mp: old? old.mp : 50, maxMp:50,
+    level: old? old.level : 1, xp: old? old.xp : 0, xpNext: old? old.xpNext : 60,
+    gold: old? old.gold : 0, hpPots: old? old.hpPots : 2, mpPots: old? old.mpPots : 1,
+    owned: old? old.owned : {},
+    speed: 5.2,
+    moveTarget:null, attackTarget:null, atkCd:0, swing:0, fbCd:0
+  };
+  recalcStats();
+  updateHUD();
+}
+
+// 重算受裝備影響的衍生屬性
+function recalcStats(){
+  player.maxHp = player.baseMaxHp + player.armorHp;
+  player.maxMp = player.baseMaxMp;
+  if(player.hp > player.maxHp) player.hp = player.maxHp;
+  if(player.mp > player.maxMp) player.mp = player.maxMp;
+}
+// 有效攻擊力 = 武器 + 等級加成
+function effDmg(){ return player.weaponDmg + player.levelBonus; }
+
+// ---------- 樓層切換 ----------
+function loadFloor(){
+  worldMode = "dungeon";
+  if(townGroup){ scene.remove(townGroup); townGroup=null; }
+  npcs.forEach(n=>n.parent&&n.parent.remove(n)); npcs=[];
+  bubbles.forEach(b=>b.el.remove()); bubbles=[];
+  enemies.forEach(e=>scene.remove(e));
+  pickups.forEach(p=>scene.remove(p));
+  projectiles.forEach(p=>scene.remove(p.mesh));
+  enemies=[];pickups=[];projectiles=[];
+  $("bossBar").style.display="none";
+  $("interactPrompt").style.display="none";
+  dungeon = genDungeon();
+  buildLevel();
+  initPlayer(toWorld(dungeon.rooms[0].cx, dungeon.rooms[0].cy));
+  spawnEnemies();
+  applyLighting("dungeon");
+  $("floorLabel").textContent = "地牢 " + FLOOR_NAMES[floorNum-1];
+  logMsg(floorNum===MAX_FLOOR ? "空氣中瀰漫著腐敗的氣息……深淵領主就在此處。" : "你踏入了" + FLOOR_NAMES[floorNum-1] + "。後方的紫色傳送門可隨時返回小鎮。");
+}
+
+// ---------- HUD ----------
+function updateHUD(){
+  $("hpFill").style.height = Math.max(0,player.hp/player.maxHp*100)+"%";
+  $("mpFill").style.height = Math.max(0,player.mp/player.maxMp*100)+"%";
+  $("hpNum").textContent = Math.ceil(Math.max(0,player.hp))+" / "+player.maxHp;
+  $("mpNum").textContent = Math.ceil(player.mp)+" / "+player.maxMp;
+  $("xpFill").style.width = (player.xp/player.xpNext*100)+"%";
+  $("xpLabel").textContent = "等級 "+player.level;
+  $("goldLabel").textContent = "⬩ "+player.gold+" 金幣";
+  $("gearLabel").textContent = "⚔ "+player.weaponName+" ・ 🛡 "+player.armorName;
+  $("hpPotCount").textContent = player.hpPots;
+  $("mpPotCount").textContent = player.mpPots;
+  const boss = enemies.find(e=>e.userData.type==="boss" && e.userData.dying===0);
+  if(boss) $("bossHpFill").style.width = (boss.userData.hp/boss.userData.maxHp*100)+"%";
+}
+
+function logMsg(text, color){
+  const el = document.createElement("div");
+  el.className="msg"; el.textContent=text;
+  if(color) el.style.color=color;
+  $("msgLog").prepend(el);
+  setTimeout(()=>{el.style.opacity=0; setTimeout(()=>el.remove(),1100);}, 3500);
+  while($("msgLog").children.length>5) $("msgLog").lastChild.remove();
+}
+
+function floater(worldPos, text, color, size){
+  const el = document.createElement("div");
+  el.className="floater"; el.textContent=text;
+  el.style.color=color||"#fff";
+  if(size) el.style.fontSize=size+"px";
+  document.body.appendChild(el);
+  floaters.push({el, pos:worldPos.clone().add(new THREE.Vector3(0,2,0)), life:1});
+}
+
+// ---------- 粒子 ----------
+const partGeo = new THREE.SphereGeometry(0.07,4,4);
+function burst(pos, color, n=10, spread=3){
+  for(let i=0;i<n;i++){
+    const m = new THREE.Mesh(partGeo, new THREE.MeshBasicMaterial({color, transparent:true}));
+    m.position.copy(pos).add(new THREE.Vector3(0,1,0));
+    m.userData={
+      vel:new THREE.Vector3((Math.random()-0.5)*spread,Math.random()*3+1,(Math.random()-0.5)*spread),
+      life:1
+    };
+    scene.add(m); particles.push(m);
+  }
+}
+
+// ---------- 戰鬥 ----------
+function playerAttack(target){
+  if(player.atkCd>0) return;
+  player.atkCd = 0.55;
+  player.swing = 1;
+  const dmg = Math.round(effDmg()*(0.85+Math.random()*0.3));
+  const crit = Math.random()<0.12;
+  damageEnemy(target, crit? dmg*2 : dmg, crit);
+}
+
+function damageEnemy(e, dmg, crit){
+  if(e.userData.dying>0) return;
+  e.userData.hp -= dmg;
+  e.userData.hitFlash = 0.18;
+  e.userData.state = "chase";
+  floater(e.position, dmg, crit?"#ffd24a":"#ff7a4a", crit?24:18);
+  burst(e.position, 0x8a1818, 6, 2.5);
+  if(e.userData.hp<=0) killEnemy(e);
+  updateHUD();
+}
+
+function killEnemy(e){
+  e.userData.dying = 1;
+  kills++;
+  const u = e.userData;
+  gainXP(u.xp);
+  const g = u.gold[0]+Math.floor(Math.random()*(u.gold[1]-u.gold[0]));
+  spawnPickup("gold", e.position);
+  if(Math.random()<0.22) spawnPickup("hpPot", e.position);
+  else if(Math.random()<0.14) spawnPickup("mpPot", e.position);
+  e.userData.goldVal = g;
+  burst(e.position, u.type==="boss"?0xd43a2a:0x44332a, u.type==="boss"?40:14, 4);
+  if(u.type==="boss"){
+    $("bossBar").style.display="none";
+    logMsg("深淵領主發出最後的哀嚎,化為飛灰!", "#ffd24a");
+    setTimeout(winGame, 1600);
+  }
+}
+
+function gainXP(xp){
+  player.xp += xp;
+  floater(player.mesh.position, "+"+xp+" 經驗", "#c9a14a", 14);
+  while(player.xp >= player.xpNext){
+    player.xp -= player.xpNext;
+    player.level++;
+    player.xpNext = Math.round(player.xpNext*1.45);
+    player.baseMaxHp += 18; player.baseMaxMp += 8; player.levelBonus += 4;
+    recalcStats();
+    player.hp = player.maxHp; player.mp = player.maxMp;
+    floater(player.mesh.position, "升級!", "#ffd24a", 28);
+    burst(player.mesh.position, 0xc9a14a, 26, 4);
+    logMsg("你升到了等級 "+player.level+"!力量在血脈中奔流。", "#ffd24a");
+  }
+  updateHUD();
+}
+
+function hurtPlayer(raw){
+  const dmg = Math.max(1, Math.round(raw - player.armorDef));
+  player.hp -= dmg;
+  floater(player.mesh.position, dmg, "#ff4a3a", 20);
+  $("hurtFlash").style.opacity=1;
+  setTimeout(()=>$("hurtFlash").style.opacity=0, 120);
+  updateHUD();
+  if(player.hp<=0 && gameState==="play"){
+    gameState="dead";
+    const ds = $("deathScreen");
+    ds.style.display="flex";
+    requestAnimationFrame(()=>{
+      ds.style.background="rgba(20,0,0,.88)";
+      ds.querySelector("h1").style.opacity=1;
+      $("deathStats").innerHTML = endStatsHTML();
+      $("deathStats").style.opacity=1;
+      ds.querySelector(".againBtn").classList.add("show");
+    });
+  }
+}
+
+function castFireball(targetPoint){
+  if(player.fbCd>0) return;
+  if(player.mp<10){ logMsg("法力不足!", "#6a8ad0"); return; }
+  player.mp -= 10; player.fbCd = 0.45;
+  const dir = targetPoint.clone().sub(player.mesh.position); dir.y=0; dir.normalize();
+  player.mesh.rotation.y = Math.atan2(dir.x, dir.z);
+  const mesh = new THREE.Mesh(new THREE.SphereGeometry(0.22,8,8),
+    new THREE.MeshBasicMaterial({color:0xff8830}));
+  const light = new THREE.PointLight(0xff7020, 1.6, 6);
+  mesh.add(light);
+  mesh.position.copy(player.mesh.position).add(new THREE.Vector3(0,1.3,0)).add(dir.clone().multiplyScalar(0.7));
+  scene.add(mesh);
+  projectiles.push({mesh, dir, speed:13, life:2.2, dmg:Math.round(effDmg()*1.4)});
+  updateHUD();
+}
+
+function endStatsHTML(){
+  return "抵達 "+FLOOR_NAMES[floorNum-1]+" ・ 等級 "+player.level+"<br>"+
+         "擊殺 "+kills+" 隻怪物 ・ 累積 "+totalGold+" 金幣";
+}
+function winGame(){
+  gameState="win";
+  const ws=$("winScreen");
+  ws.style.display="flex";
+  requestAnimationFrame(()=>{
+    ws.style.background="rgba(8,5,0,.9)";
+    ws.querySelector("h1").style.opacity=1;
+    $("winStats").innerHTML = endStatsHTML();
+    $("winStats").style.opacity=1;
+    ws.querySelector(".againBtn").classList.add("show");
+  });
+}
+
+// ============================================================
+//  灰燼鎮 — 城鎮系統(傳送門 / 建築 / NPC / 商店 / 對話)
+//  設計為資料驅動,日後新增商店或 NPC 只需擴充對應資料表。
+// ============================================================
+
+// ---------- 傳送門 ----------
+function makePortal(color){
+  const grp = new THREE.Group();
+  const ring = new THREE.Mesh(new THREE.TorusGeometry(1.05,0.16,12,28),
+    new THREE.MeshStandardMaterial({color, emissive:color, emissiveIntensity:0.6, metalness:0.4, roughness:0.4}));
+  ring.position.y = 1.25;
+  const disc = new THREE.Mesh(new THREE.CircleGeometry(0.95,28),
+    new THREE.MeshBasicMaterial({color, transparent:true, opacity:0.35, side:THREE.DoubleSide}));
+  disc.position.y = 1.25;
+  const base = new THREE.Mesh(new THREE.CylinderGeometry(1.1,1.4,0.25,20),
+    new THREE.MeshStandardMaterial({color:0x232028, roughness:0.85}));
+  base.position.y = 0.12;
+  const light = new THREE.PointLight(color, 1.6, 9);
+  light.position.y = 1.3;
+  grp.add(base, ring, disc, light);
+  grp.userData = {ring, disc, light, seed:Math.random()*9};
+  return grp;
+}
+function animatePortal(grp, dt){
+  const u = grp.userData; if(!u) return;
+  const t = performance.now()/1000;
+  if(u.disc){ u.disc.rotation.z += dt*0.7; u.disc.material.opacity = 0.3 + Math.sin(t*3+u.seed)*0.12; }
+  if(u.ring) u.ring.rotation.z += dt*0.4;
+  if(u.light) u.light.intensity = 1.3 + Math.sin(t*4+u.seed)*0.4;
+}
+
+// ---------- 建築 ----------
+function makeBuilding(w,d,h, wallColor, roofColor){
+  const grp = new THREE.Group();
+  const wall = new THREE.Mesh(new THREE.BoxGeometry(w,h,d),
+    new THREE.MeshStandardMaterial({color:wallColor, roughness:0.92}));
+  wall.position.y = h/2; wall.castShadow=true; wall.receiveShadow=true;
+  const roof = new THREE.Mesh(new THREE.ConeGeometry(Math.max(w,d)*0.82, h*0.6, 4),
+    new THREE.MeshStandardMaterial({color:roofColor, roughness:0.88}));
+  roof.position.y = h + h*0.28; roof.rotation.y = Math.PI/4; roof.castShadow=true;
+  const door = new THREE.Mesh(new THREE.BoxGeometry(1.1,1.8,0.12),
+    new THREE.MeshStandardMaterial({color:0x3a2414, roughness:0.8}));
+  door.position.set(0,0.9,d/2+0.02);
+  const winMat = new THREE.MeshStandardMaterial({color:0xffe7a0, emissive:0xffc24a, emissiveIntensity:0.5});
+  const w1 = new THREE.Mesh(new THREE.BoxGeometry(0.7,0.7,0.1), winMat);
+  w1.position.set(-w*0.28,1.45,d/2+0.02);
+  const w2 = w1.clone(); w2.position.x = w*0.28;
+  grp.add(wall,roof,door,w1,w2);
+  return grp;
+}
+function makeSign(emoji){
+  const cv = document.createElement("canvas"); cv.width=cv.height=128;
+  const cx = cv.getContext("2d");
+  cx.fillStyle="#1a120b"; cx.fillRect(0,0,128,128);
+  cx.strokeStyle="#6a4a2a"; cx.lineWidth=9; cx.strokeRect(7,7,114,114);
+  cx.font="74px serif"; cx.textAlign="center"; cx.textBaseline="middle";
+  cx.fillText(emoji,64,72);
+  const tex = new THREE.CanvasTexture(cv);
+  const board = new THREE.Mesh(new THREE.PlaneGeometry(1.2,1.2),
+    new THREE.MeshBasicMaterial({map:tex, transparent:true}));
+  return board;
+}
+
+// ---------- 城鎮建構 ----------
+const TOWN_BOUND = 26;
+function buildTown(){
+  if(townGroup){ scene.remove(townGroup); }
+  townGroup = new THREE.Group();
+  town = { bound:TOWN_BOUND, colliders:[], interactables:[] };
+
+  const ground = new THREE.Mesh(new THREE.BoxGeometry(TOWN_BOUND*2,0.4,TOWN_BOUND*2),
+    new THREE.MeshStandardMaterial({color:0x55663a, roughness:1}));
+  ground.position.y=-0.2; ground.receiveShadow=true;
+  townGroup.add(ground);
+
+  // 中央廣場
+  const plaza = new THREE.Mesh(new THREE.CylinderGeometry(8,8,0.32,40),
+    new THREE.MeshStandardMaterial({color:0x9a8f7a, roughness:0.95}));
+  plaza.position.set(0,-0.03,2); plaza.receiveShadow=true;
+  townGroup.add(plaza);
+
+  // 噴泉
+  const fountain = new THREE.Group();
+  const fb = new THREE.Mesh(new THREE.CylinderGeometry(2.2,2.4,0.7,24),
+    new THREE.MeshStandardMaterial({color:0x8a8078, roughness:0.9}));
+  fb.position.y=0.35;
+  const water = new THREE.Mesh(new THREE.CylinderGeometry(1.9,1.9,0.5,24),
+    new THREE.MeshStandardMaterial({color:0x4a8ad0, transparent:true, opacity:0.82, roughness:0.2, metalness:0.3, emissive:0x12325a}));
+  water.position.y=0.55;
+  const spout = new THREE.Mesh(new THREE.CylinderGeometry(0.16,0.22,1.5,12),
+    new THREE.MeshStandardMaterial({color:0x8a8078}));
+  spout.position.y=1.25;
+  fountain.add(fb,water,spout);
+  fountain.position.set(0,0,2);
+  fountain.traverse(o=>{if(o.isMesh)o.castShadow=true;});
+  townGroup.add(fountain);
+  town.colliders.push({minX:-2.5,maxX:2.5,minZ:-0.5,maxZ:4.5});
+
+  // 武器店(左)
+  const wShop = makeBuilding(7,6,3.2,0x6a4a32,0x5a2418);
+  wShop.position.set(-13,0,-4);
+  const wSign = makeSign("⚔"); wSign.position.set(-13,2.7,-0.9);
+  townGroup.add(wShop,wSign);
+  town.colliders.push({minX:-16.5,maxX:-9.5,minZ:-7,maxZ:-1});
+  town.interactables.push({type:"shop_weapon", x:-13, z:0.4, label:"武器店 — 鐵匠鋪"});
+
+  // 防具店(右)
+  const aShop = makeBuilding(7,6,3.2,0x4a5a6a,0x2a3a48);
+  aShop.position.set(13,0,-4);
+  const aSign = makeSign("🛡"); aSign.position.set(13,2.7,-0.9);
+  townGroup.add(aShop,aSign);
+  town.colliders.push({minX:9.5,maxX:16.5,minZ:-7,maxZ:-1});
+  town.interactables.push({type:"shop_armor", x:13, z:0.4, label:"防具店 — 甲匠鋪"});
+
+  // 裝飾房屋(未來可擴充為更多商店)
+  const houseSpots = [
+    [-20,10,0x6a5a42,0x4a2a1a],[20,10,0x5a5a4a,0x3a3020],
+    [-20,-14,0x6a5040,0x4a2418],[20,-14,0x585060,0x303040],
+    [-9,17,0x705840,0x4a2a1a],[9,17,0x605848,0x3a3020]
+  ];
+  houseSpots.forEach(([x,z,wc,rc])=>{
+    const w=5+Math.random()*1.5, d=4.5+Math.random()*1.5;
+    const h = makeBuilding(w,d,2.8,wc,rc);
+    h.position.set(x,0,z); h.rotation.y=(Math.random()-0.5)*0.4;
+    townGroup.add(h);
+    town.colliders.push({minX:x-w/2-0.3,maxX:x+w/2+0.3,minZ:z-d/2-0.3,maxZ:z+d/2+0.3});
+  });
+
+  // 深淵傳送門(鎮北)
+  const dPortal = makePortal(0x9a2ad0);
+  dPortal.position.set(0,0,-13);
+  townGroup.add(dPortal);
+  town.dungeonPortal = dPortal;
+  town.interactables.push({type:"enter_dungeon", x:0, z:-13, label:"深淵傳送門 — 進入地牢"});
+  const gate = new THREE.Mesh(new THREE.TorusGeometry(2.3,0.32,8,20,Math.PI),
+    new THREE.MeshStandardMaterial({color:0x2a2230, roughness:0.7}));
+  gate.position.set(0,0,-13.7);
+  townGroup.add(gate);
+
+  // 圍牆
+  const wallMat = new THREE.MeshStandardMaterial({color:0x4a4438, roughness:0.95});
+  [[0,-TOWN_BOUND,TOWN_BOUND*2,1],[0,TOWN_BOUND,TOWN_BOUND*2,1],
+   [-TOWN_BOUND,0,1,TOWN_BOUND*2],[TOWN_BOUND,0,1,TOWN_BOUND*2]].forEach(([x,z,w,d])=>{
+    const m = new THREE.Mesh(new THREE.BoxGeometry(w,3,d), wallMat);
+    m.position.set(x,1.5,z); m.castShadow=true; townGroup.add(m);
+  });
+
+  // 樹木點綴
+  for(let i=0;i<10;i++){
+    const a=Math.random()*Math.PI*2, r=16+Math.random()*8;
+    const tx=Math.cos(a)*r, tz=Math.sin(a)*r;
+    if(Math.abs(tz+13)<4 && Math.abs(tx)<4) continue;
+    const tree = new THREE.Group();
+    const trunk = new THREE.Mesh(new THREE.CylinderGeometry(0.18,0.24,1.2,6),
+      new THREE.MeshStandardMaterial({color:0x4a3420}));
+    trunk.position.y=0.6;
+    const leaf = new THREE.Mesh(new THREE.ConeGeometry(1.1,2.2,7),
+      new THREE.MeshStandardMaterial({color:0x3a5a2a, roughness:1}));
+    leaf.position.y=2.1;
+    tree.add(trunk,leaf); tree.position.set(tx,0,tz);
+    tree.traverse(o=>{if(o.isMesh)o.castShadow=true;});
+    townGroup.add(tree);
+  }
+
+  scene.add(townGroup);
+}
+
+// ---------- 居民與鎮長 ----------
+const MAYOR_NAME = "歐德林";
+const MAYOR_STORY = [
+  "旅人,你終於來了。我是灰燼鎮的鎮長,歐德林。",
+  "三個月前,鎮北那道古老石門毫無預兆地自行開啟,地底湧出無盡的亡者與暗影。",
+  "我們的礦工、衛兵一個接一個沉入那道『深淵迴廊』,再也沒有回來。",
+  "傳說最底層盤踞著『深淵領主』——是它扭曲了大地,召喚出這些怪物。",
+  "鎮上的鐵匠與甲匠願意為你打點裝備,廣場的居民也會為你祈福。",
+  "拿起你的劍吧。穿過鎮北的傳送門,深入五層地牢,終結這場夢魘。",
+  "灰燼鎮……就把最後的希望託付給你了。"
+];
+const VILLAGER_LINES = [
+  "聽說地牢昨夜又往下塌了一層……",
+  "願聖光庇佑你,旅人。",
+  "我家地窖最近老是傳來抓牆的聲音。",
+  "鐵匠的新貨到了,去看看吧。",
+  "別小看那些骨頭兵,它們可不會喊痛。",
+  "入夜後,千萬別靠近鎮北的門。",
+  "你也是來討伐深淵的?祝你活著回來。",
+  "金幣在這年頭,可比性命還好用。",
+  "我兒子也進了地牢……至今音訊全無。",
+  "噴泉的水,是這鎮上唯一還乾淨的東西了。"
+];
+const NPC_TUNICS = [0x8a4a3a,0x3a5a6a,0x6a6a3a,0x7a5a8a,0x4a6a4a,0x8a7a4a];
+
+function makeNpc(tunicColor, isMayor){
+  const grp = new THREE.Group();
+  const robe = new THREE.Mesh(new THREE.CylinderGeometry(0.26,0.4,1.1,8),
+    new THREE.MeshStandardMaterial({color:tunicColor, roughness:0.9}));
+  robe.position.y=0.7;
+  const head = new THREE.Mesh(new THREE.SphereGeometry(0.2,10,10),
+    new THREE.MeshStandardMaterial({color:0xd0a884, roughness:0.85}));
+  head.position.y=1.45;
+  grp.add(robe,head);
+  if(isMayor){
+    const cape = new THREE.Mesh(new THREE.CylinderGeometry(0.3,0.46,1.0,8),
+      new THREE.MeshStandardMaterial({color:0x5a1838, roughness:0.85}));
+    cape.position.set(0,0.66,-0.08);
+    const hat = new THREE.Mesh(new THREE.CylinderGeometry(0.02,0.3,0.4,10),
+      new THREE.MeshStandardMaterial({color:0x2a1830}));
+    hat.position.y=1.68;
+    const brim = new THREE.Mesh(new THREE.CylinderGeometry(0.34,0.34,0.04,12),
+      new THREE.MeshStandardMaterial({color:0x2a1830}));
+    brim.position.y=1.52;
+    grp.add(cape,hat,brim);
+  }
+  grp.traverse(o=>{if(o.isMesh)o.castShadow=true;});
+  return grp;
+}
+
+function spawnTownNpcs(){
+  npcs.forEach(n=>n.parent&&n.parent.remove(n));
+  npcs = [];
+  // 鎮長(固定於廣場南側,面向玩家)
+  const mayor = makeNpc(0x6a3a4a, true);
+  mayor.position.set(0,0,6); mayor.rotation.y=Math.PI;
+  mayor.userData = {kind:"mayor", radius:0.5, bobSeed:Math.random()*10};
+  scene.add(mayor); npcs.push(mayor);
+  town.interactables.push({type:"mayor", x:0, z:6, label:"與鎮長 "+MAYOR_NAME+" 交談"});
+  // 漫遊居民
+  for(let i=0;i<6;i++){
+    const npc = makeNpc(NPC_TUNICS[i%NPC_TUNICS.length], false);
+    const a=Math.random()*Math.PI*2, r=4+Math.random()*8;
+    npc.position.set(Math.cos(a)*r, 0, 2+Math.sin(a)*r);
+    npc.userData = {kind:"villager", radius:0.4, target:null,
+      wait:Math.random()*3, speed:1.3+Math.random()*0.7,
+      sayCd:4+Math.random()*8, bobSeed:Math.random()*10};
+    scene.add(npc); npcs.push(npc);
+  }
+}
+
+// ---------- 城鎮更新 ----------
+function updateTown(dt){
+  const t = performance.now()/1000;
+  if(town.dungeonPortal) animatePortal(town.dungeonPortal, dt);
+
+  npcs.forEach(n=>{
+    const u = n.userData;
+    if(u.kind!=="villager"){ n.position.y = Math.sin(t*1.2+u.bobSeed)*0.02; return; }
+    n.position.y = Math.abs(Math.sin(t*3+u.bobSeed))*0.05;
+    u.wait -= dt;
+    if(!u.target){
+      if(u.wait<=0){
+        const a=Math.random()*Math.PI*2, r=Math.random()*10;
+        const tg = new THREE.Vector3(Math.cos(a)*r, 0, 2+Math.sin(a)*r);
+        if(canStandTown(tg.x,tg.z,u.radius)) u.target=tg; else u.wait=1;
+      }
+    } else {
+      const dir = u.target.clone().sub(n.position); dir.y=0;
+      const d = dir.length();
+      if(d<0.3){ u.target=null; u.wait=1+Math.random()*4; }
+      else{
+        dir.normalize();
+        const nx=n.position.x+dir.x*u.speed*dt, nz=n.position.z+dir.z*u.speed*dt;
+        if(canStandTown(nx,nz,u.radius)){ n.position.x=nx; n.position.z=nz; n.rotation.y=Math.atan2(dir.x,dir.z); }
+        else u.target=null;
+      }
+    }
+    u.sayCd -= dt;
+    if(u.sayCd<=0){
+      u.sayCd = 8+Math.random()*10;
+      if(n.position.distanceTo(player.mesh.position) < 18)
+        showBubble(n, VILLAGER_LINES[Math.floor(Math.random()*VILLAGER_LINES.length)]);
+    }
+  });
+
+  // 互動偵測:取最近目標
+  let best=null, bestD=3.0;
+  for(const it of town.interactables){
+    const d = Math.hypot(player.mesh.position.x-it.x, player.mesh.position.z-it.z);
+    if(d<bestD){ bestD=d; best=it; }
+  }
+  if(best){
+    nearInteractable = best;
+    const pr=$("interactPrompt"); pr.style.display="block";
+    pr.innerHTML = "按 <b>E</b> ・ "+best.label;
+  }
+}
+
+// ---------- 居民對話泡泡 ----------
+function showBubble(npc, text){
+  bubbles = bubbles.filter(b=>{ if(b.npc===npc){ b.el.remove(); return false;} return true; });
+  const el = document.createElement("div");
+  el.className="speechBubble"; el.textContent=text;
+  document.body.appendChild(el);
+  bubbles.push({npc, el, life:3.4});
+}
+function updateBubbles(dt){
+  if(!camera) return;
+  bubbles = bubbles.filter(b=>{
+    b.life -= dt;
+    if(b.life<=0 || !b.npc.parent){ b.el.remove(); return false; }
+    const sp = b.npc.position.clone().add(new THREE.Vector3(0,2.0,0)).project(camera);
+    if(sp.z>1){ b.el.style.display="none"; return true; }
+    b.el.style.display="block";
+    b.el.style.left = ((sp.x+1)/2*innerWidth)+"px";
+    b.el.style.top  = ((-sp.y+1)/2*innerHeight)+"px";
+    b.el.style.opacity = Math.min(1,b.life);
+    return true;
+  });
+}
+
+// ---------- 對話系統 ----------
+function startDialogue(name, lines){
+  dialogue = {name, lines, idx:0};
+  gameState = "dialogue";
+  $("interactPrompt").style.display="none";
+  $("dlgName").textContent = name;
+  $("dlgText").textContent = lines[0];
+  $("dialoguePanel").style.display="block";
+}
+function advanceDialogue(){
+  if(!dialogue) return;
+  dialogue.idx++;
+  if(dialogue.idx >= dialogue.lines.length){
+    $("dialoguePanel").style.display="none";
+    dialogue=null; gameState="play";
+  } else {
+    $("dlgText").textContent = dialogue.lines[dialogue.idx];
+  }
+}
+
+// ---------- 商店系統(資料驅動,可擴充) ----------
+const SHOP_DATA = {
+  shop_weapon: {
+    title:"鐵匠鋪", npc:"鐵匠 戈倫", greet:"「想要更鋒利的傢伙?瞧瞧這些。」",
+    items:[
+      {id:"w_iron", icon:"⚔",  name:"鐵劍",     desc:"攻擊力 20",        price:60,  kind:"weapon", val:20},
+      {id:"w_mace", icon:"🔨", name:"鋼鎚",     desc:"攻擊力 32",        price:180, kind:"weapon", val:32},
+      {id:"w_rune", icon:"🗡",  name:"符文戰刃", desc:"攻擊力 50",        price:420, kind:"weapon", val:50},
+      {id:"p_hp",   icon:"🧪", name:"生命藥水", desc:"回復 55 生命",     price:25,  kind:"hpPot"}
+    ]
+  },
+  shop_armor: {
+    title:"甲匠鋪", npc:"甲匠 蜜拉", greet:"「保住性命,才有機會花掉金幣。」",
+    items:[
+      {id:"a_leather", icon:"🥋", name:"皮甲",   desc:"防禦 +2 ・ 生命上限 +30",  price:70,  kind:"armor", def:2, hp:30},
+      {id:"a_chain",   icon:"🧥", name:"鎖子甲", desc:"防禦 +5 ・ 生命上限 +70",  price:200, kind:"armor", def:5, hp:70},
+      {id:"a_plate",   icon:"🛡", name:"板甲",   desc:"防禦 +9 ・ 生命上限 +140", price:450, kind:"armor", def:9, hp:140},
+      {id:"p_mp",      icon:"🔮", name:"法力藥水", desc:"回復 40 法力",          price:25,  kind:"mpPot"}
+    ]
+  }
+};
+let currentShop = null;
+function findItem(id){
+  for(const k in SHOP_DATA){ const it=SHOP_DATA[k].items.find(i=>i.id===id); if(it) return it; }
+  return null;
+}
+function openShop(type){
+  currentShop = type;
+  gameState = "shop";
+  $("interactPrompt").style.display="none";
+  renderShop();
+  $("shopPanel").style.display="flex";
+}
+function renderShop(){
+  const s = SHOP_DATA[currentShop];
+  let html = '<div class="shopGold">⬩ '+player.gold+'</div>';
+  html += '<div class="shopTitle">'+s.title+'</div>';
+  html += '<div class="shopNpc">'+s.npc+'</div>';
+  html += '<div class="shopGreet">'+s.greet+'</div>';
+  s.items.forEach(it=>{
+    const gear = (it.kind==="weapon"||it.kind==="armor");
+    const owned = gear && player.owned[it.id];
+    const equipped = (it.kind==="weapon" && player.weaponId===it.id) || (it.kind==="armor" && player.armorId===it.id);
+    let btn;
+    if(equipped) btn = '<button class="buyBtn owned" disabled>已裝備</button>';
+    else if(owned) btn = '<button class="buyBtn" onclick="equipItem(\''+it.id+'\')">裝備</button>';
+    else{
+      const afford = player.gold>=it.price;
+      btn = '<button class="buyBtn" '+(afford?'':'disabled')+' onclick="buyItem(\''+it.id+'\')">⬩ '+it.price+'</button>';
+    }
+    html += '<div class="itemRow"><div class="itemIcon">'+it.icon+'</div>'+
+            '<div class="itemInfo"><div class="itemName">'+it.name+'</div>'+
+            '<div class="itemDesc">'+it.desc+'</div></div>'+btn+'</div>';
+  });
+  html += '<button class="closeBtn" onclick="closeShop()">離 開</button>';
+  $("shopBox").innerHTML = html;
+}
+function buyItem(id){
+  const it = findItem(id); if(!it || player.gold<it.price) return;
+  player.gold -= it.price;
+  if(it.kind==="hpPot") player.hpPots++;
+  else if(it.kind==="mpPot") player.mpPots++;
+  else { player.owned[it.id]=true; equipItem(it.id); }
+  logMsg("購入了 "+it.name+"。", "#c9a14a");
+  renderShop(); updateHUD();
+}
+function equipItem(id){
+  const it = findItem(id); if(!it) return;
+  if(it.kind==="weapon"){ player.weaponId=it.id; player.weaponDmg=it.val; player.weaponName=it.name; }
+  else if(it.kind==="armor"){ player.armorId=it.id; player.armorDef=it.def; player.armorHp=it.hp; player.armorName=it.name; recalcStats(); }
+  renderShop(); updateHUD();
+}
+function closeShop(){
+  $("shopPanel").style.display="none";
+  currentShop=null; gameState="play";
+}
+
+// ---------- 互動分派 ----------
+function interact(){
+  if(!nearInteractable || interactCd>0) return;
+  interactCd = 0.3;
+  switch(nearInteractable.type){
+    case "return":        loadTown(); break;
+    case "enter_dungeon": loadFloor(); break;
+    case "mayor":         startDialogue(MAYOR_NAME, MAYOR_STORY); break;
+    case "shop_weapon":   openShop("shop_weapon"); break;
+    case "shop_armor":    openShop("shop_armor"); break;
+  }
+}
+
+// ---------- 載入城鎮 ----------
+function loadTown(){
+  worldMode = "town";
+  if(levelGroup){ scene.remove(levelGroup); levelGroup=null; }
+  torchLights = [];
+  enemies.forEach(e=>scene.remove(e));
+  pickups.forEach(p=>scene.remove(p));
+  projectiles.forEach(p=>scene.remove(p.mesh));
+  enemies=[]; pickups=[]; projectiles=[];
+  bubbles.forEach(b=>b.el.remove()); bubbles=[];
+  $("bossBar").style.display="none";
+  $("interactPrompt").style.display="none";
+  buildTown();
+  spawnTownNpcs();
+  initPlayer(new THREE.Vector3(0,0,13));
+  player.mesh.rotation.y = Math.PI;        // 面向北方廣場
+  player.hp = player.maxHp; player.mp = player.maxMp;  // 城鎮為安全休息地
+  applyLighting("town");
+  $("floorLabel").textContent = "灰燼鎮";
+  updateHUD();
+  if(!storyToldOnce){
+    storyToldOnce = true;
+    setTimeout(()=>{ if(gameState==="play" && worldMode==="town") startDialogue(MAYOR_NAME, MAYOR_STORY); }, 800);
+  } else {
+    logMsg("你回到了灰燼鎮,傷勢已然痊癒。", "#cfe0ff");
+  }
+}
+
+// ---------- 復活 ----------
+function revive(){
+  const ds=$("deathScreen");
+  ds.style.display="none";
+  ds.style.background="rgba(0,0,0,0)";
+  ds.querySelector("h1").style.opacity=0;
+  $("deathStats").style.opacity=0;
+  ds.querySelector(".againBtn").classList.remove("show");
+  floorNum = 1;
+  gameState = "play";
+  loadTown();
+}
+
+// ---------- 輸入 ----------
+function setupInput(){
+  addEventListener("keydown", e=>{
+    const k = e.key.toLowerCase();
+    keys[k] = true;
+    if(gameState==="dialogue"){ if(k==="e"||k==="enter"||k===" ") advanceDialogue(); return; }
+    if(gameState==="shop"){ if(k==="escape") closeShop(); return; }
+    if(gameState!=="play") return;
+    if(k==="e") interact();
+    if(e.key==="1" && player.hpPots>0 && player.hp<player.maxHp){
+      player.hpPots--; player.hp=Math.min(player.maxHp, player.hp+55);
+      floater(player.mesh.position,"+55","#ff8a7a",18); updateHUD();
+    }
+    if(e.key==="2" && player.mpPots>0 && player.mp<player.maxMp){
+      player.mpPots--; player.mp=Math.min(player.maxMp, player.mp+40);
+      floater(player.mesh.position,"+40 法力","#7a9aff",16); updateHUD();
+    }
+  });
+  addEventListener("keyup", e=> keys[e.key.toLowerCase()]=false);
+
+  // 點擊對話框 → 繼續對話
+  $("dialoguePanel").addEventListener("click", advanceDialogue);
+
+  const dom = renderer.domElement;
+  dom.addEventListener("contextmenu", e=>e.preventDefault());
+  dom.addEventListener("pointerdown", e=>{
+    if(gameState!=="play") return;
+    mouseNDC.set(e.clientX/innerWidth*2-1, -(e.clientY/innerHeight)*2+1);
+    raycaster.setFromCamera(mouseNDC, camera);
+    if(e.button===2){
+      if(worldMode==="town") return;
+      const pt = new THREE.Vector3();
+      raycaster.ray.intersectPlane(groundPlane, pt);
+      if(pt) castFireball(pt);
+      return;
+    }
+    // 左鍵:優先選敵人
+    const alive = enemies.filter(en=>en.userData.dying===0);
+    const hits = raycaster.intersectObjects(alive, true);
+    if(hits.length){
+      let obj = hits[0].object;
+      while(obj && !obj.userData.isEnemy) obj = obj.parent;
+      if(obj){ player.attackTarget = obj; player.moveTarget = null; return; }
+    }
+    const pt = new THREE.Vector3();
+    raycaster.ray.intersectPlane(groundPlane, pt);
+    if(pt){ player.moveTarget = pt; player.attackTarget = null; }
+  });
+}
+
+// ---------- 小地圖 ----------
+const mmCtx = $("minimap").getContext("2d");
+function drawMinimap(){
+  const s = 148/MAP;
+  mmCtx.fillStyle="rgba(5,3,2,.95)";
+  mmCtx.fillRect(0,0,148,148);
+  for(let y=0;y<MAP;y++)for(let x=0;x<MAP;x++){
+    if(!dungeon.explored[y][x]) continue;
+    if(dungeon.grid[y][x]===0){
+      mmCtx.fillStyle="#3a3128";
+      mmCtx.fillRect(x*s,y*s,s,s);
+    }
+  }
+  if(dungeon.stairsPos){
+    const [gx,gy]=toGrid(dungeon.stairsPos);
+    if(dungeon.explored[gy] && dungeon.explored[gy][gx]){
+      mmCtx.fillStyle="#9a4ad0";
+      mmCtx.fillRect(gx*s-1,gy*s-1,s+2,s+2);
+    }
+  }
+  enemies.forEach(e=>{
+    if(e.userData.dying>0) return;
+    const [gx,gy]=toGrid(e.position);
+    if(dungeon.explored[gy] && dungeon.explored[gy][gx]){
+      mmCtx.fillStyle = e.userData.type==="boss"?"#ff3a1a":"#8a1818";
+      mmCtx.fillRect(gx*s,gy*s,s,s);
+    }
+  });
+  const [px,py]=toGrid(player.mesh.position);
+  mmCtx.fillStyle="#e8d8a8";
+  mmCtx.fillRect(px*s-1,py*s-1,s+2,s+2);
+}
+
+// ---------- 主迴圈 ----------
+function update(dt){
+  const p = player;
+  // ----- 玩家移動 -----
+  let mv = new THREE.Vector3();
+  if(keys.w) mv.z-=1; if(keys.s) mv.z+=1;
+  if(keys.a) mv.x-=1; if(keys.d) mv.x+=1;
+  if(mv.lengthSq()>0){
+    mv.normalize();
+    p.moveTarget=null; p.attackTarget=null;
+    tryMove(p.mesh, mv.x*p.speed*dt, mv.z*p.speed*dt);
+    p.mesh.rotation.y = Math.atan2(mv.x, mv.z);
+  } else if(p.attackTarget){
+    const t = p.attackTarget;
+    if(t.userData.dying>0){ p.attackTarget=null; }
+    else{
+      const d = p.mesh.position.distanceTo(t.position);
+      const dir = t.position.clone().sub(p.mesh.position); dir.y=0; dir.normalize();
+      p.mesh.rotation.y = Math.atan2(dir.x, dir.z);
+      if(d > 1.7) tryMove(p.mesh, dir.x*p.speed*dt, dir.z*p.speed*dt);
+      else playerAttack(t);
+    }
+  } else if(p.moveTarget){
+    const d = p.mesh.position.distanceTo(p.moveTarget);
+    if(d<0.25) p.moveTarget=null;
+    else{
+      const dir = p.moveTarget.clone().sub(p.mesh.position); dir.y=0; dir.normalize();
+      if(!tryMove(p.mesh, dir.x*p.speed*dt, dir.z*p.speed*dt)) p.moveTarget=null;
+      p.mesh.rotation.y = Math.atan2(dir.x, dir.z);
+    }
+  }
+  p.atkCd = Math.max(0, p.atkCd-dt);
+  p.fbCd = Math.max(0, p.fbCd-dt);
+  p.mp = Math.min(p.maxMp, p.mp + 2.2*dt);
+
+  // 揮劍動畫
+  if(p.swing>0){
+    p.swing = Math.max(0, p.swing-dt*3.2);
+    const arm = p.mesh.userData.swordArm;
+    arm.rotation.x = -Math.sin(p.swing*Math.PI)*2.0;
+  }
+
+  // ----- 互動偵測(每幀重置) -----
+  nearInteractable = null;
+  $("interactPrompt").style.display = "none";
+  interactCd = Math.max(0, interactCd - dt);
+
+  if(worldMode === "dungeon"){
+    // 探索區域
+    const [pgx,pgy]=toGrid(p.mesh.position);
+    for(let dy=-4;dy<=4;dy++)for(let dx=-4;dx<=4;dx++){
+      const gx=pgx+dx, gy=pgy+dy;
+      if(gx>=0&&gy>=0&&gx<MAP&&gy<MAP && dx*dx+dy*dy<=18) dungeon.explored[gy][gx]=true;
+    }
+    // 樓梯
+    if(dungeon.stairsPos && p.mesh.position.distanceTo(dungeon.stairsPos)<1.1){
+      floorNum++;
+      loadFloor();
+      return;
+    }
+    // 回程傳送門
+    if(dungeon.returnPortalMesh){
+      animatePortal(dungeon.returnPortalMesh, dt);
+      if(p.mesh.position.distanceTo(dungeon.returnPortalPos)<2.0){
+        nearInteractable = {type:"return"};
+        const pr=$("interactPrompt"); pr.style.display="block";
+        pr.innerHTML="按 <b>E</b> 返回灰燼鎮";
+      }
+    }
+  } else {
+    updateTown(dt);
+  }
+
+  // ----- 敵人 AI -----
+  enemies.forEach(e=>{
+    const u = e.userData;
+    if(u.dying>0){
+      u.dying += dt*1.6;
+      e.scale.setScalar(Math.max(0.01, (1-Math.min(1,u.dying-1))) * ENEMY_TYPES[u.type].scale);
+      e.position.y = -Math.max(0,u.dying-1)*1.2;
+      e.rotation.x = Math.min(1.2,(u.dying-1)*2);
+      if(u.dying>2.2){ scene.remove(e); }
+      return;
+    }
+    if(u.hitFlash>0){
+      u.hitFlash-=dt;
+      e.traverse(o=>{if(o.isMesh&&o.material.emissive) o.material.emissive.setHex(u.hitFlash>0?0x661111:0x000000);});
+    }
+    const dist = e.position.distanceTo(p.mesh.position);
+    if(u.state==="idle"){
+      if(dist < u.aggro){ u.state="chase"; if(u.type==="boss") logMsg("「凡人……你的靈魂將屬於深淵。」","#d48a7a"); }
+      e.position.y = Math.sin(performance.now()/600+u.bobSeed)*0.04;
+    } else {
+      const dir = p.mesh.position.clone().sub(e.position); dir.y=0;
+      const d = dir.length(); dir.normalize();
+      e.rotation.y = Math.atan2(dir.x, dir.z);
+      u.atkCd = Math.max(0,u.atkCd-dt);
+      if(d > u.attackRange){
+        tryMove(e, dir.x*u.speed*dt, dir.z*u.speed*dt);
+        e.position.y = Math.abs(Math.sin(performance.now()/130+u.bobSeed))*0.08;
+      } else if(u.atkCd<=0 && p.hp>0){
+        u.atkCd = u.type==="boss"? 1.1 : 1.35;
+        hurtPlayer(Math.round(u.dmg*(0.85+Math.random()*0.3)));
+        e.position.y = 0.18; // 撲擊
+      } else {
+        e.position.y = Math.max(0, e.position.y - dt*1.2);
+      }
+      if(d > u.aggro*2.2) u.state="idle";
+    }
+  });
+  enemies = enemies.filter(e=>e.userData.dying<2.2 || e.parent);
+
+  // ----- 火球 -----
+  projectiles = projectiles.filter(pr=>{
+    pr.mesh.position.add(pr.dir.clone().multiplyScalar(pr.speed*dt));
+    pr.life -= dt;
+    pr.mesh.scale.setScalar(1+Math.sin(performance.now()/40)*0.15);
+    const [gx,gy]=toGrid(pr.mesh.position);
+    let hitWall = !walkable(gx,gy);
+    let hit = null;
+    for(const e of enemies){
+      if(e.userData.dying>0) continue;
+      if(pr.mesh.position.distanceTo(e.position.clone().add(new THREE.Vector3(0,1,0))) < 0.8+e.userData.radius){ hit=e; break;}
+    }
+    if(hit){ damageEnemy(hit, pr.dmg, false); burst(pr.mesh.position,0xff8830,12,3);}
+    if(hit||hitWall||pr.life<=0){
+      if(hitWall) burst(pr.mesh.position,0xff8830,8,2);
+      scene.remove(pr.mesh); return false;
+    }
+    return true;
+  });
+
+  // ----- 掉落物 -----
+  pickups = pickups.filter(pk=>{
+    pk.userData.t += dt;
+    pk.rotation.y += dt*2;
+    pk.position.y = 0.25+Math.sin(pk.userData.t*3)*0.08;
+    if(pk.position.distanceTo(p.mesh.position)<1.0){
+      const k = pk.userData.kind;
+      if(k==="gold"){
+        const g = 2+Math.floor(Math.random()*6)+floorNum*2;
+        p.gold+=g; totalGold+=g;
+        floater(pk.position,"+"+g+" 金幣","#c9a14a",14);
+      }
+      else if(k==="hpPot"){ p.hpPots++; logMsg("拾獲生命藥水。","#d48a7a"); }
+      else { p.mpPots++; logMsg("拾獲法力藥水。","#7a9ad4"); }
+      updateHUD();
+      scene.remove(pk); return false;
+    }
+    return true;
+  });
+
+  // ----- 粒子 -----
+  particles = particles.filter(m=>{
+    m.userData.life -= dt*1.8;
+    m.userData.vel.y -= 9*dt;
+    m.position.add(m.userData.vel.clone().multiplyScalar(dt));
+    if(m.position.y<0.05){m.position.y=0.05; m.userData.vel.y*=-0.3;}
+    m.material.opacity = m.userData.life;
+    if(m.userData.life<=0){scene.remove(m); return false;}
+    return true;
+  });
+
+  // ----- 火把閃爍 -----
+  const t = performance.now()/1000;
+  torchLights.forEach(tc=>{
+    const u=tc.userData;
+    u.light.intensity = 1.3 + Math.sin(t*9+u.seed)*0.25 + Math.sin(t*23+u.seed*3)*0.12;
+    u.flame.scale.setScalar(0.9+Math.sin(t*11+u.seed)*0.18);
+  });
+
+  // ----- 浮動文字 -----
+  floaters = floaters.filter(f=>{
+    f.life -= dt*0.9;
+    f.pos.y += dt*1.4;
+    const sp = f.pos.clone().project(camera);
+    f.el.style.left = ((sp.x+1)/2*innerWidth)+"px";
+    f.el.style.top = ((-sp.y+1)/2*innerHeight)+"px";
+    f.el.style.opacity = Math.max(0,f.life);
+    if(f.life<=0){f.el.remove(); return false;}
+    return true;
+  });
+
+  // ----- 攝影機 -----
+  const camTarget = p.mesh.position.clone().add(new THREE.Vector3(0,13.5,9.5));
+  camera.position.lerp(camTarget, 1-Math.pow(0.001,dt));
+  camera.lookAt(p.mesh.position.x, 0.5, p.mesh.position.z);
+
+  if(worldMode==="dungeon") drawMinimap();
+}
+
+let mmFrame=0;
+function loop(){
+  requestAnimationFrame(loop);
+  const dt = Math.min(clock.getDelta(), 0.05);
+  if(gameState==="play") update(dt);
+  updateBubbles(dt);
+  renderer.render(scene, camera);
+}
+
+// ---------- 啟動 ----------
+$("startBtn").addEventListener("click", ()=>{
+  $("titleScreen").style.display="none";
+  $("hud").style.display="block";
+  initThree();
+  setupInput();
+  gameState="play";
+  loadTown();
+  loop();
+  logMsg("你抵達了灰燼鎮。(WASD/左鍵移動,靠近後按 E 互動)");
+});
+</script>
+</body>
+</html>
