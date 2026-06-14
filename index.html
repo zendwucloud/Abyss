@@ -2,7 +2,9 @@
 <html lang="zh-Hant">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, minimum-scale=1.0, user-scalable=no, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
 <title>深淵迴廊 — 暗黑地牢探險</title>
 <style>
   :root{
@@ -12,8 +14,10 @@
     --stone:#15120f; --stone-edge:#3a3128;
   }
   *{margin:0;padding:0;box-sizing:border-box;user-select:none;-webkit-user-select:none;}
-  html,body{width:100%;height:100%;overflow:hidden;background:#000;font-family:"Noto Serif TC","Songti TC",serif;}
-  #game{position:fixed;inset:0;cursor:crosshair;}
+  html,body{width:100%;height:100%;overflow:hidden;background:#000;font-family:"Noto Serif TC","Songti TC",serif;
+    touch-action:manipulation;overscroll-behavior:none;-webkit-text-size-adjust:100%;}
+  #game{position:fixed;inset:0;cursor:crosshair;touch-action:none;}
+  #game canvas{touch-action:none;}
 
   /* ===== 標題畫面 ===== */
   #titleScreen{
@@ -74,7 +78,22 @@
   .slot .key{position:absolute;top:2px;left:5px;font-size:10px;color:#8a7a5c;}
   .slot .count{position:absolute;bottom:2px;right:5px;font-size:12px;color:var(--bone);font-weight:700;text-shadow:0 1px 2px #000;}
 
-  /* ===== 手機操作:火球鍵(方形,置於紅球上方) ===== */
+  /* ===== 手機操作:揮劍鍵(方形,置於火球鍵上方) ===== */
+  #attackBtn{
+    position:absolute;left:49px;bottom:216px;z-index:12;
+    width:56px;height:56px;
+    display:none;align-items:center;justify-content:center;font-size:26px;
+    pointer-events:auto;cursor:pointer;user-select:none;-webkit-tap-highlight-color:transparent;
+    touch-action:manipulation;
+    border:1px solid #4a4a5a;background:rgba(18,18,26,.9);
+    box-shadow:inset 0 0 14px #000, 0 0 10px rgba(160,170,200,.3);
+    transition:transform .08s;
+  }
+  #attackBtn:active{transform:scale(.9);}
+  @media (pointer: coarse){ #attackBtn{display:flex;} }
+  body.town #attackBtn{display:none;}
+
+  /* ===== 手機火球按鈕 ===== */
   #fireballBtn{
     position:absolute;left:49px;bottom:150px;z-index:12;
     width:56px;height:56px;
@@ -163,7 +182,9 @@
     position:fixed;left:50%;bottom:120px;transform:translateX(-50%);z-index:14;display:none;
     background:rgba(10,7,4,.85);border:1px solid #5a3a28;color:var(--bone);
     font-size:14px;padding:8px 20px;letter-spacing:.12em;box-shadow:0 0 16px rgba(0,0,0,.6);
+    pointer-events:auto;cursor:pointer;-webkit-tap-highlight-color:transparent;touch-action:manipulation;
   }
+  #interactPrompt:active{background:rgba(30,20,10,.95);}
   #interactPrompt b{color:var(--gold);}
 
   /* ===== 居民對話泡泡 ===== */
@@ -179,7 +200,7 @@
   /* ===== 商店面板 ===== */
   #shopPanel{position:fixed;inset:0;z-index:55;display:none;align-items:center;justify-content:center;
     background:rgba(5,4,3,.6);pointer-events:auto;}
-  .shopBox{width:min(540px,92vw);max-height:84vh;overflow:auto;padding:22px 24px;
+  .shopBox{width:min(540px,92vw);max-height:84vh;overflow:auto;padding:22px 24px;touch-action:pan-y;
     background:linear-gradient(#1c140d,#100a05);border:1px solid #5a3a28;
     box-shadow:0 0 44px rgba(0,0,0,.8), inset 0 0 30px rgba(0,0,0,.55);}
   .shopBox::-webkit-scrollbar{width:8px;} .shopBox::-webkit-scrollbar-thumb{background:#3a2c1e;}
@@ -223,7 +244,7 @@
   <button id="startBtn">踏上旅程</button>
   <div id="controls">
     <b>滑鼠左鍵 / 點擊</b> 移動・攻擊 &nbsp;|&nbsp; <b>右鍵</b> 火球術(耗魔)<br>
-    <b>W A S D</b> 移動 &nbsp;|&nbsp; <b>雙擊</b>(或 <b>E</b>)互動・傳送 &nbsp;|&nbsp; <b>1</b>/<b>2</b> 喝藥水<br>
+    <b>W A S D</b> 移動 &nbsp;|&nbsp; <b>點擊</b>(或 <b>E</b>)互動・傳送 &nbsp;|&nbsp; <b>1</b>/<b>2</b> 喝藥水<br>
     在灰燼鎮整備,踏入五層地牢,擊敗深淵領主
   </div>
 </div>
@@ -254,6 +275,7 @@
     <div class="slot" id="slotMp"><span class="key">2</span>🔮<span class="count" id="mpPotCount">0</span></div>
   </div>
 
+  <div id="attackBtn">⚔️</div>
   <div id="fireballBtn">🔥</div>
   <div id="dpad">
     <div class="dpad-arrow up">▲</div>
@@ -328,6 +350,21 @@ const groundPlane = new THREE.Plane(new THREE.Vector3(0,1,0), 0);
 
 const FLOOR_NAMES = ["第一層","第二層","第三層","第四層","最底層"];
 const $ = id => document.getElementById(id);
+
+// ---------- 鎖住手機縮放(雙擊縮放 / 雙指捏合) ----------
+(function lockZoom(){
+  ["gesturestart","gesturechange","gestureend"].forEach(ev=>
+    document.addEventListener(ev, e=>e.preventDefault(), {passive:false}));
+  document.addEventListener("touchmove", e=>{
+    if(e.touches.length>1) e.preventDefault();   // 阻擋雙指縮放
+  }, {passive:false});
+  let lastTouchEnd = 0;
+  document.addEventListener("touchend", e=>{
+    const now = Date.now();
+    if(now - lastTouchEnd < 350) e.preventDefault();  // 阻擋雙擊縮放
+    lastTouchEnd = now;
+  }, {passive:false});
+})();
 
 // ---------- 初始化 ----------
 function initThree(){
@@ -934,6 +971,18 @@ function castFireballMobile(){
   castFireball(pt);
 }
 
+// 手機揮劍:自動鎖定最近敵人,設為攻擊目標(自動接近並揮砍)
+function attackNearestMobile(){
+  if(gameState!=="play" || worldMode!=="dungeon") return;
+  let target=null, best=Infinity;
+  for(const e of enemies){
+    if(e.userData.dying>0) continue;
+    const d = e.position.distanceTo(player.mesh.position);
+    if(d<best){ best=d; target=e; }
+  }
+  if(target && best<16){ player.attackTarget = target; player.moveTarget = null; }
+}
+
 function useHpPotion(){
   if(gameState!=="play") return;
   if(player.hpPots>0 && player.hp<player.maxHp){
@@ -1248,7 +1297,7 @@ function updateTown(dt){
   if(best){
     nearInteractable = best;
     const pr=$("interactPrompt"); pr.style.display="block";
-    pr.innerHTML = "<b>雙擊</b> ・ "+best.label+" <span style='color:#7a6a52'>(或按 E)</span>";
+    pr.innerHTML = "👆 "+best.label+" <span style='color:#7a6a52'>(點此 / 按 E)</span>";
   }
 }
 
@@ -1426,13 +1475,10 @@ function revive(){
   loadTown();
 }
 
-// 雙擊偵測(手機:雙擊圖示觸發)
-function bindDoubleTap(el, cb){
-  let last = 0;
+// 單擊綁定(手機:所有按鍵單擊即用)
+function bindTap(el, cb){
   el.addEventListener("pointerdown", e=>{
-    e.preventDefault(); e.stopPropagation();
-    const now = performance.now();
-    if(now - last < 320){ cb(); last = 0; } else last = now;
+    e.preventDefault(); e.stopPropagation(); cb();
   });
 }
 
@@ -1479,16 +1525,23 @@ function setupInput(){
   fb.addEventListener("pointerdown", e=>{ e.preventDefault(); e.stopPropagation(); castFireballMobile(); });
   fb.addEventListener("contextmenu", e=>e.preventDefault());
 
-  // 手機:藥水雙擊使用
-  bindDoubleTap($("slotHp"), useHpPotion);
-  bindDoubleTap($("slotMp"), useMpPotion);
+  // 手機揮劍按鈕
+  const ab = $("attackBtn");
+  ab.addEventListener("pointerdown", e=>{ e.preventDefault(); e.stopPropagation(); attackNearestMobile(); });
+  ab.addEventListener("contextmenu", e=>e.preventDefault());
+
+  // 手機:藥水單擊使用
+  bindTap($("slotHp"), useHpPotion);
+  bindTap($("slotMp"), useMpPotion);
+
+  // 手機:單擊互動提示即可進入商店 / 傳送 / 交談
+  bindTap($("interactPrompt"), interact);
 
   // 手機:十字方向鍵
   setupDpad();
 
   const dom = renderer.domElement;
   dom.addEventListener("contextmenu", e=>e.preventDefault());
-  let lastTapTime = 0;
   dom.addEventListener("pointerdown", e=>{
     if(gameState!=="play") return;
     mouseNDC.set(e.clientX/innerWidth*2-1, -(e.clientY/innerHeight)*2+1);
@@ -1500,16 +1553,7 @@ function setupInput(){
       if(pt) castFireball(pt);
       return;
     }
-    // 雙擊 / 雙點:靠近商店、傳送門、鎮長時觸發互動(手機友善)
-    const now = performance.now();
-    const isDouble = (now - lastTapTime) < 320;
-    lastTapTime = now;
-    if(isDouble && nearInteractable){
-      player.moveTarget = null; player.attackTarget = null;
-      interact();
-      return;
-    }
-    // 左鍵:優先選敵人
+    // 左鍵 / 點擊:優先選敵人
     const alive = enemies.filter(en=>en.userData.dying===0);
     const hits = raycaster.intersectObjects(alive, true);
     if(hits.length){
@@ -1624,7 +1668,7 @@ function update(dt){
       if(p.mesh.position.distanceTo(dungeon.returnPortalPos)<2.0){
         nearInteractable = {type:"return"};
         const pr=$("interactPrompt"); pr.style.display="block";
-        pr.innerHTML="<b>雙擊</b> 返回灰燼鎮 <span style='color:#7a6a52'>(或按 E)</span>";
+        pr.innerHTML="👆 返回灰燼鎮 <span style='color:#7a6a52'>(點此 / 按 E)</span>";
       }
     }
   } else {
