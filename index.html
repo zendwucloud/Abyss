@@ -67,25 +67,47 @@
     width:54px;height:54px;border:1px solid #4a3a28;background:rgba(10,7,5,.85);
     display:flex;align-items:center;justify-content:center;position:relative;
     box-shadow:inset 0 0 14px #000;font-size:24px;
+    pointer-events:auto;cursor:pointer;-webkit-tap-highlight-color:transparent;
+    touch-action:manipulation;user-select:none;transition:transform .08s;
   }
+  .slot:active{transform:scale(.92);}
   .slot .key{position:absolute;top:2px;left:5px;font-size:10px;color:#8a7a5c;}
   .slot .count{position:absolute;bottom:2px;right:5px;font-size:12px;color:var(--bone);font-weight:700;text-shadow:0 1px 2px #000;}
 
-  /* ===== 手機火球按鈕 ===== */
+  /* ===== 手機操作:火球鍵(方形,置於紅球上方) ===== */
   #fireballBtn{
-    position:absolute;right:148px;bottom:44px;z-index:12;
-    width:72px;height:72px;border-radius:50%;
-    display:none;align-items:center;justify-content:center;font-size:32px;
+    position:absolute;left:49px;bottom:150px;z-index:12;
+    width:56px;height:56px;
+    display:none;align-items:center;justify-content:center;font-size:26px;
     pointer-events:auto;cursor:pointer;user-select:none;-webkit-tap-highlight-color:transparent;
-    background:radial-gradient(circle at 50% 34%, #ffaa55, #b83410 70%, #5a1404);
-    border:2px solid #6a2a10;
-    box-shadow:0 0 18px rgba(212,80,30,.6), inset 0 2px 6px rgba(255,200,120,.5);
+    touch-action:manipulation;
+    border:1px solid #5a3320;background:rgba(28,12,8,.9);
+    box-shadow:inset 0 0 14px #000, 0 0 10px rgba(212,80,30,.35);
     transition:transform .08s;
   }
   #fireballBtn:active{transform:scale(.9);}
   #fireballBtn.cooldown{opacity:.4;}
   @media (pointer: coarse){ #fireballBtn{display:flex;} }
   body.town #fireballBtn{display:none;}
+
+  /* ===== 手機操作:十字方向鍵(置於藍球上方) ===== */
+  #dpad{
+    position:absolute;right:12px;bottom:140px;z-index:12;
+    width:130px;height:130px;border-radius:50%;
+    display:none;pointer-events:auto;touch-action:none;
+    user-select:none;-webkit-tap-highlight-color:transparent;
+    background:radial-gradient(circle at 50% 50%, rgba(30,26,20,.92), rgba(10,8,6,.94));
+    border:2px solid #4a3a28;box-shadow:inset 0 0 18px #000, 0 0 12px rgba(0,0,0,.5);
+  }
+  @media (pointer: coarse){ #dpad{display:block;} }
+  .dpad-arrow{position:absolute;color:#8a7a5c;font-size:17px;pointer-events:none;}
+  .dpad-arrow.up{top:7px;left:50%;transform:translateX(-50%);}
+  .dpad-arrow.down{bottom:7px;left:50%;transform:translateX(-50%);}
+  .dpad-arrow.left{left:9px;top:50%;transform:translateY(-50%);}
+  .dpad-arrow.right{right:9px;top:50%;transform:translateY(-50%);}
+  .dpad-knob{position:absolute;left:50%;top:50%;width:46px;height:46px;margin:-23px 0 0 -23px;
+    border-radius:50%;background:radial-gradient(circle at 40% 35%, #6a5a44, #2a2018);
+    border:1px solid #5a4a32;box-shadow:0 2px 6px rgba(0,0,0,.6);pointer-events:none;transition:transform .05s;}
 
   #xpWrap{position:absolute;left:50%;bottom:84px;transform:translateX(-50%);width:min(460px,55vw);}
   #xpBar{height:7px;border:1px solid #4a3a28;background:#0a0705;box-shadow:inset 0 0 8px #000;}
@@ -228,11 +250,18 @@
   </div>
 
   <div id="bottomBar">
-    <div class="slot"><span class="key">1</span>🧪<span class="count" id="hpPotCount">0</span></div>
-    <div class="slot"><span class="key">2</span>🔮<span class="count" id="mpPotCount">0</span></div>
+    <div class="slot" id="slotHp"><span class="key">1</span>🧪<span class="count" id="hpPotCount">0</span></div>
+    <div class="slot" id="slotMp"><span class="key">2</span>🔮<span class="count" id="mpPotCount">0</span></div>
   </div>
 
   <div id="fireballBtn">🔥</div>
+  <div id="dpad">
+    <div class="dpad-arrow up">▲</div>
+    <div class="dpad-arrow down">▼</div>
+    <div class="dpad-arrow left">◀</div>
+    <div class="dpad-arrow right">▶</div>
+    <div class="dpad-knob" id="dpadKnob"></div>
+  </div>
 </div>
 
 <div id="interactPrompt"></div>
@@ -291,6 +320,7 @@ let nearInteractable = null;    // 玩家附近可互動目標
 let interactCd = 0;
 let storyToldOnce = false;
 let dialogue = null;            // {speaker, lines, idx}
+let touchDir = null;            // 手機十字鍵的移動向量 {x,z}
 const keys = {};
 const raycaster = new THREE.Raycaster();
 const mouseNDC = new THREE.Vector2();
@@ -904,6 +934,21 @@ function castFireballMobile(){
   castFireball(pt);
 }
 
+function useHpPotion(){
+  if(gameState!=="play") return;
+  if(player.hpPots>0 && player.hp<player.maxHp){
+    player.hpPots--; player.hp=Math.min(player.maxHp, player.hp+55);
+    floater(player.mesh.position,"+55","#ff8a7a",18); updateHUD();
+  }
+}
+function useMpPotion(){
+  if(gameState!=="play") return;
+  if(player.mpPots>0 && player.mp<player.maxMp){
+    player.mpPots--; player.mp=Math.min(player.maxMp, player.mp+40);
+    floater(player.mesh.position,"+40 法力","#7a9aff",16); updateHUD();
+  }
+}
+
 function endStatsHTML(){
   return "抵達 "+FLOOR_NAMES[floorNum-1]+" ・ 等級 "+player.level+"<br>"+
          "擊殺 "+kills+" 隻怪物 ・ 累積 "+totalGold+" 金幣";
@@ -1381,6 +1426,37 @@ function revive(){
   loadTown();
 }
 
+// 雙擊偵測(手機:雙擊圖示觸發)
+function bindDoubleTap(el, cb){
+  let last = 0;
+  el.addEventListener("pointerdown", e=>{
+    e.preventDefault(); e.stopPropagation();
+    const now = performance.now();
+    if(now - last < 320){ cb(); last = 0; } else last = now;
+  });
+}
+
+// 十字方向鍵(類比:依觸碰點相對中心的方向移動)
+function setupDpad(){
+  const pad = $("dpad"), knob = $("dpadKnob");
+  const R = 46;
+  function handle(e){
+    const r = pad.getBoundingClientRect();
+    let dx = e.clientX - (r.left + r.width/2);
+    let dy = e.clientY - (r.top + r.height/2);
+    const len = Math.hypot(dx,dy);
+    if(len < 8){ touchDir = {x:0,z:0}; knob.style.transform = "translate(0,0)"; return; }
+    const m = Math.min(1, len/R), nx = dx/len, ny = dy/len;
+    touchDir = {x:nx*m, z:ny*m};
+    knob.style.transform = "translate("+(nx*m*30)+"px,"+(ny*m*30)+"px)";
+  }
+  pad.addEventListener("pointerdown", e=>{ e.preventDefault(); e.stopPropagation(); pad.setPointerCapture(e.pointerId); handle(e); });
+  pad.addEventListener("pointermove", e=>{ if(touchDir!==null){ e.preventDefault(); handle(e); } });
+  const end = ()=>{ touchDir = null; knob.style.transform = "translate(0,0)"; };
+  pad.addEventListener("pointerup", end);
+  pad.addEventListener("pointercancel", end);
+}
+
 // ---------- 輸入 ----------
 function setupInput(){
   addEventListener("keydown", e=>{
@@ -1390,14 +1466,8 @@ function setupInput(){
     if(gameState==="shop"){ if(k==="escape") closeShop(); return; }
     if(gameState!=="play") return;
     if(k==="e") interact();
-    if(e.key==="1" && player.hpPots>0 && player.hp<player.maxHp){
-      player.hpPots--; player.hp=Math.min(player.maxHp, player.hp+55);
-      floater(player.mesh.position,"+55","#ff8a7a",18); updateHUD();
-    }
-    if(e.key==="2" && player.mpPots>0 && player.mp<player.maxMp){
-      player.mpPots--; player.mp=Math.min(player.maxMp, player.mp+40);
-      floater(player.mesh.position,"+40 法力","#7a9aff",16); updateHUD();
-    }
+    if(e.key==="1") useHpPotion();
+    if(e.key==="2") useMpPotion();
   });
   addEventListener("keyup", e=> keys[e.key.toLowerCase()]=false);
 
@@ -1408,6 +1478,13 @@ function setupInput(){
   const fb = $("fireballBtn");
   fb.addEventListener("pointerdown", e=>{ e.preventDefault(); e.stopPropagation(); castFireballMobile(); });
   fb.addEventListener("contextmenu", e=>e.preventDefault());
+
+  // 手機:藥水雙擊使用
+  bindDoubleTap($("slotHp"), useHpPotion);
+  bindDoubleTap($("slotMp"), useMpPotion);
+
+  // 手機:十字方向鍵
+  setupDpad();
 
   const dom = renderer.domElement;
   dom.addEventListener("contextmenu", e=>e.preventDefault());
@@ -1486,6 +1563,7 @@ function update(dt){
   let mv = new THREE.Vector3();
   if(keys.w) mv.z-=1; if(keys.s) mv.z+=1;
   if(keys.a) mv.x-=1; if(keys.d) mv.x+=1;
+  if(touchDir){ mv.x += touchDir.x; mv.z += touchDir.z; }
   if(mv.lengthSq()>0){
     mv.normalize();
     p.moveTarget=null; p.attackTarget=null;
