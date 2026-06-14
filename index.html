@@ -451,13 +451,19 @@ function genDungeon(){
     for(let yy=r.y;yy<r.y+r.h;yy++)
       for(let xx=r.x;xx<r.x+r.w;xx++) grid[yy][xx]=0;
   });
-  // 走廊
+  // 走廊(寬度 2 格 — 比原本寬一倍)
+  const carve = (x,y)=>{ if(x>=0&&y>=0&&x<MAP&&y<MAP) grid[y][x]=0; };
+  const carveWide = (x,y,horizontal)=>{
+    carve(x,y);
+    if(horizontal) carve(x,y+1);   // 水平走廊:多挖下方一格
+    else           carve(x+1,y);   // 垂直走廊:多挖右方一格
+  };
   for(let i=1;i<rooms.length;i++){
     let a=rooms[i-1], b=rooms[i];
     let x=a.cx, y=a.cy;
-    while(x!==b.cx){ grid[y][x]=0; grid[y+1]&&(grid[y+1][x]=Math.min(grid[y+1][x],grid[y+1][x])); x+=Math.sign(b.cx-x);}
-    while(y!==b.cy){ grid[y][x]=0; y+=Math.sign(b.cy-y);}
-    grid[y][x]=0;
+    while(x!==b.cx){ carveWide(x,y,true);  x+=Math.sign(b.cx-x); }
+    while(y!==b.cy){ carveWide(x,y,false); y+=Math.sign(b.cy-y); }
+    carveWide(x,y,true);
   }
   return {grid, rooms, explored:Array.from({length:MAP},()=>Array(MAP).fill(false))};
 }
