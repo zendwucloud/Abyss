@@ -1,0 +1,781 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="UTF-8">
+<title>城鎮編輯器</title>
+<style>
+* { margin:0; padding:0; box-sizing:border-box; }
+body { background:#1a1510; color:#d4c4a0; font-family:'Noto Serif TC','serif'; height:100vh; display:flex; }
+
+/* 左側面板 */
+#panel {
+  width:320px; min-width:320px; background:#120f0a;
+  border-right:1px solid #3a2e1e; display:flex; flex-direction:column;
+  overflow:hidden;
+}
+
+#panel-header {
+  padding:16px 20px 12px;
+  border-bottom:1px solid #3a2e1e;
+  background:#0e0b07;
+}
+#panel-header h1 { font-size:15px; color:#c8a060; letter-spacing:2px; }
+#panel-header p { font-size:11px; color:#6a5a3a; margin-top:4px; }
+
+/* 建築列表 */
+#building-list { flex:1; overflow-y:auto; padding:8px; }
+.building-item {
+  padding:10px 12px; margin-bottom:4px; border-radius:4px;
+  border:1px solid #2a2010; cursor:pointer; transition:all 0.15s;
+  display:flex; align-items:center; gap:10px;
+}
+.building-item:hover { border-color:#6a4a20; background:#1e1810; }
+.building-item.active { border-color:#c8a060; background:#221a08; }
+.building-icon { font-size:20px; width:28px; text-align:center; }
+.building-info { flex:1; }
+.building-name { font-size:13px; color:#c8a060; }
+.building-sub { font-size:10px; color:#6a5a3a; margin-top:2px; }
+.building-status { font-size:10px; }
+.status-glb { color:#5a9a5a; }
+.status-geo { color:#6a5a3a; }
+
+/* 控制面板 */
+#controls {
+  border-top:1px solid #3a2e1e; padding:16px;
+  background:#0e0b07;
+}
+#controls h2 { font-size:12px; color:#8a7050; letter-spacing:1px; margin-bottom:12px; }
+
+.ctrl-row { display:flex; align-items:center; margin-bottom:10px; gap:8px; }
+.ctrl-label { font-size:11px; color:#8a7050; width:50px; flex-shrink:0; }
+.ctrl-inputs { display:flex; gap:4px; flex:1; }
+.ctrl-input {
+  flex:1; background:#1a1510; border:1px solid #3a2e1e; color:#d4c4a0;
+  padding:4px 6px; font-size:11px; border-radius:3px; text-align:center;
+  font-family:monospace;
+}
+.ctrl-input:focus { outline:none; border-color:#c8a060; }
+.axis-label { font-size:10px; color:#6a5a3a; width:10px; text-align:center; }
+
+/* 模型選擇 */
+#model-select-area { margin-top:12px; }
+#model-select-area h3 { font-size:11px; color:#8a7050; margin-bottom:8px; }
+#drop-zone {
+  border:1px dashed #3a2e1e; border-radius:4px; padding:16px;
+  text-align:center; cursor:pointer; transition:all 0.15s;
+}
+#drop-zone:hover { border-color:#c8a060; background:#1a1510; }
+#drop-zone p { font-size:11px; color:#6a5a3a; }
+#drop-zone .hint { font-size:10px; color:#3a2e1e; margin-top:4px; }
+#file-input { display:none; }
+
+/* 動作按鈕 */
+.btn-row { display:flex; gap:6px; margin-top:10px; }
+.btn {
+  flex:1; padding:8px; border:1px solid #3a2e1e; background:#1a1510;
+  color:#d4c4a0; font-size:11px; border-radius:3px; cursor:pointer;
+  transition:all 0.15s; font-family:inherit;
+}
+.btn:hover { border-color:#c8a060; color:#c8a060; }
+.btn.primary { border-color:#6a4a20; background:#2a1e08; color:#c8a060; }
+.btn.primary:hover { border-color:#c8a060; background:#3a2a10; }
+.btn.danger { border-color:#6a2020; color:#c06060; }
+.btn.danger:hover { border-color:#c06060; }
+
+/* 匯出區 */
+#export-area { border-top:1px solid #3a2e1e; padding:12px 16px; background:#0e0b07; }
+#export-btn {
+  width:100%; padding:10px; background:#3a2a10; border:1px solid #c8a060;
+  color:#c8a060; font-size:12px; border-radius:3px; cursor:pointer;
+  font-family:inherit; letter-spacing:1px; transition:all 0.15s;
+}
+#export-btn:hover { background:#4a3a18; }
+
+/* 右側 3D 預覽 */
+#preview-area { flex:1; position:relative; background:#0a0806; }
+#preview-canvas { width:100%; height:100%; display:block; }
+
+/* 座標顯示 */
+#coords {
+  position:absolute; bottom:12px; left:12px;
+  background:rgba(0,0,0,0.7); padding:6px 10px; border-radius:3px;
+  font-size:10px; color:#6a5a3a; font-family:monospace;
+  pointer-events:none;
+}
+
+/* 操作提示 */
+#hints {
+  position:absolute; top:12px; right:12px;
+  background:rgba(0,0,0,0.7); padding:8px 12px; border-radius:3px;
+  font-size:10px; color:#6a5a3a; line-height:1.8;
+}
+
+/* Toast */
+#toast {
+  position:absolute; bottom:50px; left:50%; transform:translateX(-50%);
+  background:#3a2a10; border:1px solid #c8a060; color:#c8a060;
+  padding:8px 16px; border-radius:4px; font-size:12px;
+  opacity:0; transition:opacity 0.3s; pointer-events:none;
+}
+#toast.show { opacity:1; }
+
+/* 選取框 */
+#selection-box {
+  position:absolute; border:2px solid #c8a060;
+  pointer-events:none; display:none;
+  box-shadow:0 0 8px rgba(200,160,96,0.4);
+}
+</style>
+</head>
+<body>
+
+<!-- 左側面板 -->
+<div id="panel">
+  <div id="panel-header">
+    <h1>⚔ 城鎮編輯器</h1>
+    <p>選取建築 → 上傳 GLB → 調整位置</p>
+  </div>
+
+  <div id="building-list"></div>
+
+  <div id="controls">
+    <h2>▸ 位置 / 縮放</h2>
+    <div class="ctrl-row">
+      <span class="ctrl-label">位置</span>
+      <div class="ctrl-inputs">
+        <span class="axis-label">X</span>
+        <input class="ctrl-input" id="pos-x" type="number" step="0.5" value="0">
+        <span class="axis-label">Y</span>
+        <input class="ctrl-input" id="pos-y" type="number" step="0.1" value="0">
+        <span class="axis-label">Z</span>
+        <input class="ctrl-input" id="pos-z" type="number" step="0.5" value="0">
+      </div>
+    </div>
+    <div class="ctrl-row">
+      <span class="ctrl-label">旋轉 Y</span>
+      <div class="ctrl-inputs">
+        <input class="ctrl-input" id="rot-y" type="number" step="15" value="0" style="flex:2">
+        <span style="font-size:11px;color:#6a5a3a;padding:4px">°</span>
+      </div>
+    </div>
+    <div class="ctrl-row">
+      <span class="ctrl-label">縮放</span>
+      <div class="ctrl-inputs">
+        <input class="ctrl-input" id="scale-uni" type="number" step="0.05" value="1" min="0.01"
+          oninput="document.getElementById('scale-x').value=this.value;
+                   document.getElementById('scale-y').value=this.value;
+                   document.getElementById('scale-z').value=this.value;"
+          style="flex:2; font-size:13px;">
+        <span style="font-size:10px;color:#6a5a3a;padding:4px 0">等比</span>
+      </div>
+    </div>
+    <div class="ctrl-row" style="margin-top:-6px">
+      <span class="ctrl-label" style="font-size:10px;color:#4a3a2a">分軸</span>
+      <div class="ctrl-inputs">
+        <span class="axis-label">X</span>
+        <input class="ctrl-input" id="scale-x" type="number" step="0.05" value="1" min="0.01" style="font-size:10px">
+        <span class="axis-label">Y</span>
+        <input class="ctrl-input" id="scale-y" type="number" step="0.05" value="1" min="0.01" style="font-size:10px">
+        <span class="axis-label">Z</span>
+        <input class="ctrl-input" id="scale-z" type="number" step="0.05" value="1" min="0.01" style="font-size:10px">
+      </div>
+    </div>
+
+    <div id="model-select-area">
+      <h3>▸ 替換模型</h3>
+      <div id="drop-zone" onclick="document.getElementById('file-input').click()">
+        <p>📂 點擊選擇 GLB 檔案</p>
+        <p class="hint">或拖曳 .glb 到這裡</p>
+      </div>
+      <input type="file" id="file-input" accept=".glb">
+    </div>
+
+    <div class="btn-row">
+      <button class="btn primary" onclick="applyTransform()">套用變換</button>
+      <button class="btn danger" onclick="resetToGeo()">還原幾何體</button>
+    </div>
+  </div>
+
+  <div id="export-area">
+    <!-- 匯入遊戲 HTML -->
+    <div style="margin-bottom:8px">
+      <div id="html-drop" onclick="document.getElementById('html-input').click()"
+        style="border:1px dashed #3a2e1e;border-radius:3px;padding:10px;text-align:center;cursor:pointer;transition:all 0.15s"
+        onmouseover="this.style.borderColor='#c8a060'" onmouseout="this.style.borderColor='#3a2e1e'"
+        ondragover="event.preventDefault();this.style.borderColor='#c8a060'"
+        ondragleave="this.style.borderColor='#3a2e1e'"
+        ondrop="event.preventDefault();this.style.borderColor='#3a2e1e';handleHtmlDrop(event)">
+        <div id="html-status" style="font-size:11px;color:#6a5a3a">📂 匯入遊戲 HTML</div>
+      </div>
+      <input type="file" id="html-input" accept=".html" style="display:none">
+    </div>
+    <!-- 匯出按鈕 -->
+    <div style="display:flex;gap:6px">
+      <button id="export-html-btn" onclick="exportHTML()"
+        style="flex:2;padding:10px;background:#3a2a10;border:1px solid #c8a060;color:#c8a060;font-size:12px;border-radius:3px;cursor:pointer;font-family:inherit;letter-spacing:1px;transition:all 0.15s;opacity:0.4"
+        disabled>⬇ 匯出遊戲 HTML</button>
+      <button onclick="exportConfig()"
+        style="flex:1;padding:10px;background:#1a1510;border:1px solid #3a2e1e;color:#6a5a3a;font-size:11px;border-radius:3px;cursor:pointer;font-family:inherit;transition:all 0.15s"
+        onmouseover="this.style.borderColor='#6a5a3a'" onmouseout="this.style.borderColor='#3a2e1e'">存 JSON</button>
+      <button onclick="document.getElementById('json-input').click()"
+        style="flex:1;padding:10px;background:#1a1510;border:1px solid #3a2e1e;color:#6a5a3a;font-size:11px;border-radius:3px;cursor:pointer;font-family:inherit;transition:all 0.15s"
+        onmouseover="this.style.borderColor='#6a5a3a'" onmouseout="this.style.borderColor='#3a2e1e'">載 JSON</button>
+      <input type="file" id="json-input" accept=".json" style="display:none">
+    </div>
+  </div>
+</div>
+
+<!-- 右側預覽 -->
+<div id="preview-area">
+  <canvas id="preview-canvas"></canvas>
+  <div id="coords">位置: - | 縮放: -</div>
+  <div id="hints">
+    滑鼠左鍵拖曳：旋轉視角<br>
+    滑鼠右鍵拖曳：平移<br>
+    滾輪：縮放<br>
+    點擊建築：選取
+  </div>
+  <div id="selection-box"></div>
+  <div id="toast"></div>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/GLTFLoader.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+
+<script>
+// ── 城鎮建築定義 ─────────────────────────────────────
+// autoScaleBase：與遊戲 HTML 的 GLB 縮放基準一致
+const BUILDINGS = [
+  { id:'fountain',   name:'噴泉廣場',   icon:'⛲', x:0,   y:0, z:2,   rotY:0, scaleX:1, scaleY:1, scaleZ:1, glbFile:null, hasGlb:false, geoDesc:'圓柱+水盆（拖入GLB替換）', autoScaleBase:3.20 },
+  { id:'blacksmith', name:'鐵匠鋪',     icon:'⚒', x:-13, y:0, z:-4,  rotY:0, scaleX:1, scaleY:1, scaleZ:1, glbFile:null, hasGlb:false, geoDesc:'7×6×3.2 磚紅屋',           autoScaleBase:7.0  },
+  { id:'armor',      name:'防具店',     icon:'🛡', x:13,  y:0, z:-4,  rotY:0, scaleX:1, scaleY:1, scaleZ:1, glbFile:null, hasGlb:false, geoDesc:'7×6×3.2 灰藍屋',           autoScaleBase:7.0  },
+  { id:'house1',     name:'民居 左上',  icon:'🏠', x:-20, y:0, z:10,  rotY:0, scaleX:1, scaleY:1, scaleZ:1, glbFile:null, hasGlb:false, geoDesc:'5×4.5×2.8 棕屋',           autoScaleBase:5.0  },
+  { id:'house2',     name:'民居 右上',  icon:'🏠', x:20,  y:0, z:10,  rotY:0, scaleX:1, scaleY:1, scaleZ:1, glbFile:null, hasGlb:false, geoDesc:'5×4.5×2.8 灰屋',           autoScaleBase:5.0  },
+  { id:'house3',     name:'民居 左下',  icon:'🏠', x:-20, y:0, z:-14, rotY:0, scaleX:1, scaleY:1, scaleZ:1, glbFile:null, hasGlb:false, geoDesc:'5×4.5×2.8 磚屋',           autoScaleBase:5.0  },
+  { id:'house4',     name:'民居 右下',  icon:'🏠', x:20,  y:0, z:-14, rotY:0, scaleX:1, scaleY:1, scaleZ:1, glbFile:null, hasGlb:false, geoDesc:'5×4.5×2.8 深屋',           autoScaleBase:5.0  },
+  { id:'house5',     name:'民居 左前',  icon:'🏠', x:-9,  y:0, z:17,  rotY:0, scaleX:1, scaleY:1, scaleZ:1, glbFile:null, hasGlb:false, geoDesc:'5×4.5×2.8',                autoScaleBase:5.0  },
+  { id:'house6',     name:'民居 右前',  icon:'🏠', x:9,   y:0, z:17,  rotY:0, scaleX:1, scaleY:1, scaleZ:1, glbFile:null, hasGlb:false, geoDesc:'5×4.5×2.8',                autoScaleBase:5.0  },
+  { id:'portal',     name:'深淵傳送門', icon:'🌀', x:0,   y:0, z:-13, rotY:0, scaleX:1, scaleY:1, scaleZ:1, glbFile:null, hasGlb:false, geoDesc:'傳送門（程式碼）',          autoScaleBase:5.0  },
+];
+
+// GLB 快取
+const glbCache = {};
+const buildingMeshes = {};
+let selectedId = null;
+
+// ── Three.js 初始化 ─────────────────────────────────
+const canvas = document.getElementById('preview-canvas');
+const renderer = new THREE.WebGLRenderer({ canvas, antialias:true });
+renderer.setPixelRatio(window.devicePixelRatio);
+renderer.shadowMap.enabled = true;
+renderer.setClearColor(0x0a0806);
+
+const scene = new THREE.Scene();
+scene.fog = new THREE.Fog(0x0a0806, 60, 120);
+
+const camera = new THREE.PerspectiveCamera(50, 1, 0.1, 200);
+camera.position.set(0, 35, 45);
+camera.lookAt(0, 0, 0);
+
+const controls = new THREE.OrbitControls(camera, renderer.domElement);
+controls.enableDamping = true;
+controls.dampingFactor = 0.08;
+controls.target.set(0, 0, 0);
+
+// 光源
+scene.add(new THREE.AmbientLight(0xfff5e0, 0.6));
+const sun = new THREE.DirectionalLight(0xfff0cc, 1.5);
+sun.position.set(20, 40, 20);
+sun.castShadow = true;
+scene.add(sun);
+
+// 地面格線
+const grid = new THREE.GridHelper(60, 60, 0x3a2e1e, 0x2a1e10);
+scene.add(grid);
+
+// 地面平面
+const ground = new THREE.Mesh(
+  new THREE.PlaneGeometry(60,60),
+  new THREE.MeshStandardMaterial({color:0x8a7050, roughness:1})
+);
+ground.rotation.x = -Math.PI/2;
+ground.receiveShadow = true;
+scene.add(ground);
+
+// 圍牆示意
+const wallMat = new THREE.MeshStandardMaterial({color:0x4a3a28, roughness:0.9});
+[[0,-26,52,1],[0,26,52,1],[-26,0,1,52],[26,0,1,52]].forEach(([x,z,w,d])=>{
+  const m = new THREE.Mesh(new THREE.BoxGeometry(w,3,d), wallMat);
+  m.position.set(x,1.5,z); scene.add(m);
+});
+
+// ── 建築列表 UI ──────────────────────────────────────
+function renderList(){
+  const list = document.getElementById('building-list');
+  list.innerHTML = '';
+  BUILDINGS.forEach(b=>{
+    const div = document.createElement('div');
+    div.className = 'building-item' + (b.id===selectedId?' active':'');
+    div.innerHTML = `
+      <span class="building-icon">${b.icon}</span>
+      <div class="building-info">
+        <div class="building-name">${b.name}</div>
+        <div class="building-sub">${b.geoDesc}</div>
+      </div>
+      <span class="building-status ${b.hasGlb?'status-glb':'status-geo'}">${b.hasGlb?'GLB':'幾何'}</span>
+    `;
+    div.onclick = ()=>selectBuilding(b.id);
+    list.appendChild(div);
+  });
+}
+
+// ── 選取建築 ─────────────────────────────────────────
+function selectBuilding(id){
+  selectedId = id;
+  const b = BUILDINGS.find(x=>x.id===id);
+  if(!b) return;
+
+  // 更新控制面板
+  document.getElementById('pos-x').value = b.x;
+  document.getElementById('pos-y').value = b.y;
+  document.getElementById('pos-z').value = b.z;
+  document.getElementById('rot-y').value = Math.round(b.rotY * 180/Math.PI);
+  document.getElementById('scale-x').value = b.scaleX;
+  document.getElementById('scale-y').value = b.scaleY;
+  document.getElementById('scale-z').value = b.scaleZ;
+  // 等比縮放欄位顯示 X 值
+  const uniEl = document.getElementById('scale-uni');
+  if(uniEl) uniEl.value = b.scaleX;
+
+  // 相機看向該建築
+  controls.target.set(b.x, 1, b.z);
+
+  // 高亮
+  Object.entries(buildingMeshes).forEach(([bid, mesh])=>{
+    mesh.traverse(o=>{
+      if(o.isMesh && o.userData._origMat){
+        o.material = o.userData._origMat;
+      }
+    });
+  });
+  if(buildingMeshes[id]){
+    buildingMeshes[id].traverse(o=>{
+      if(o.isMesh){
+        if(!o.userData._origMat) o.userData._origMat = o.material;
+        const h = o.material.clone();
+        h.emissive = new THREE.Color(0x443300);
+        h.emissiveIntensity = 1;
+        o.material = h;
+      }
+    });
+  }
+  updateCoords(b);
+  renderList();
+}
+
+// ── 放置建築到場景 ────────────────────────────────────
+function placeBuilding(b, glbScene=null){
+  // 移除舊的
+  if(buildingMeshes[b.id]){ scene.remove(buildingMeshes[b.id]); }
+
+  let mesh;
+  if(glbScene){
+    mesh = glbScene.clone ? glbScene : glbScene;
+  } else {
+    // 幾何體佔位（方塊）
+    const colors = {
+      fountain:0x8a7870, blacksmith:0x6a4a32, armor:0x4a5a6a,
+      house1:0x6a5a42, house2:0x5a5a4a, house3:0x6a5040,
+      house4:0x585060, house5:0x705840, house6:0x605848, portal:0x6a20a0
+    };
+    const geo = b.id==='fountain'
+      ? new THREE.CylinderGeometry(8,8,0.5,32)   // 實際廣場半徑
+      : b.id==='portal'
+      ? new THREE.TorusGeometry(2.3,0.5,8,20)
+      : new THREE.BoxGeometry(7,3,5);
+    mesh = new THREE.Mesh(geo, new THREE.MeshStandardMaterial({
+      color: colors[b.id]||0x888888, roughness:0.9,
+      transparent: b.id==='fountain', opacity: b.id==='fountain'?0.5:1
+    }));
+    mesh.position.y = b.id==='portal'?2 : b.id==='fountain'?0.25 : 1.5;
+  }
+
+  const grp = new THREE.Group();
+  grp.add(mesh);
+  grp.position.set(b.x, b.y, b.z);
+  grp.rotation.y = b.rotY;
+  // 幾何體用 scaleX/Y/Z，GLB 也用同樣的 grp scale（model 本身 scale=1）
+  grp.scale.set(b.scaleX||1, b.scaleY||1, b.scaleZ||1);
+  grp.userData.buildingId = b.id;
+  grp.traverse(o=>{ if(o.isMesh){ o.castShadow=true; o.receiveShadow=true; } });
+  scene.add(grp);
+  buildingMeshes[b.id] = grp;
+}
+
+// ── 初始化所有建築 ────────────────────────────────────
+function initBuildings(){
+  BUILDINGS.forEach(b=>{
+    if(b.hasGlb && b.glbFile && glbCache[b.glbFile]){
+      placeBuilding(b, glbCache[b.glbFile]);
+    } else {
+      placeBuilding(b, null);
+    }
+  });
+}
+
+// ── 載入 GLB 並套用 ───────────────────────────────────
+function loadGLB(file, buildingId){
+  const b = BUILDINGS.find(x=>x.id===buildingId);
+  if(!b) return;
+
+  const loader = new THREE.GLTFLoader();
+  const url = URL.createObjectURL(file);
+  showToast('載入中...');
+
+  loader.load(url, (gltf)=>{
+    const model = gltf.scene;
+
+    // 計算原始尺寸，不改 model.scale（讓 grp.scale 統一控制）
+    const box = new THREE.Box3().setFromObject(model);
+    const size = box.getSize(new THREE.Vector3());
+    const maxDim = Math.max(size.x, size.y, size.z);
+    const base = b.autoScaleBase || 7.0;
+    const autoScale = base / maxDim;
+
+    // 對齊地面
+    model.position.y = -box.min.y;
+
+    glbCache[file.name] = model;
+    b.glbFile = file.name;
+    b.hasGlb = true;
+    // 初始縮放設為 autoScale，grp 負責套用
+    b.scaleX = autoScale; b.scaleY = autoScale; b.scaleZ = autoScale;
+
+    placeBuilding(b, model);
+    selectBuilding(buildingId);
+    renderList();
+    URL.revokeObjectURL(url);
+    showToast(`✅ ${file.name} 載入 (scale=${autoScale.toFixed(2)})`);
+  }, undefined, (err)=>{
+    showToast('❌ GLB 載入失敗');
+    console.error(err);
+  });
+}
+
+// ── 套用變換 ─────────────────────────────────────────
+function applyTransform(){
+  if(!selectedId) return;
+  const b = BUILDINGS.find(x=>x.id===selectedId);
+  if(!b) return;
+
+  b.x = parseFloat(document.getElementById('pos-x').value)||0;
+  b.y = parseFloat(document.getElementById('pos-y').value)||0;
+  b.z = parseFloat(document.getElementById('pos-z').value)||0;
+  b.rotY = (parseFloat(document.getElementById('rot-y').value)||0) * Math.PI/180;
+  b.scaleX = parseFloat(document.getElementById('scale-x').value)||1;
+  b.scaleY = parseFloat(document.getElementById('scale-y').value)||1;
+  b.scaleZ = parseFloat(document.getElementById('scale-z').value)||1;
+
+  const mesh = buildingMeshes[selectedId];
+  if(mesh){
+    mesh.position.set(b.x, b.y, b.z);
+    mesh.rotation.y = b.rotY;
+    mesh.scale.set(b.scaleX||1, b.scaleY||1, b.scaleZ||1);
+    console.log('套用縮放:', b.scaleX, b.scaleY, b.scaleZ);
+  } else {
+    console.warn('找不到 mesh:', selectedId);
+  }
+  updateCoords(b);
+  showToast('✅ 套用完成');
+}
+
+// ── 還原幾何體 ────────────────────────────────────────
+function resetToGeo(){
+  if(!selectedId) return;
+  const b = BUILDINGS.find(x=>x.id===selectedId);
+  if(!b) return;
+  b.hasGlb = false; b.glbFile = null;
+  b.scaleX=1; b.scaleY=1; b.scaleZ=1;
+  placeBuilding(b, null);
+  selectBuilding(selectedId);
+  renderList();
+  showToast('還原為幾何體');
+}
+
+// ── 匯出 JSON ─────────────────────────────────────────
+function exportConfig(){
+  const config = BUILDINGS.map(b=>({
+    id: b.id, name: b.name,
+    x: b.x, y: b.y, z: b.z,
+    rotY: parseFloat((b.rotY * 180/Math.PI).toFixed(1)),
+    scaleX: b.scaleX, scaleY: b.scaleY, scaleZ: b.scaleZ,
+    glbFile: b.glbFile, hasGlb: b.hasGlb
+  }));
+  const json = JSON.stringify(config, null, 2);
+  const blob = new Blob([json], {type:'application/json'});
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = 'town_config.json';
+  a.click();
+  showToast('✅ 匯出 town_config.json');
+}
+
+// ── 載入 JSON ─────────────────────────────────────────
+document.addEventListener('DOMContentLoaded', ()=>{
+  document.getElementById('json-input').addEventListener('change', e=>{
+    const file = e.target.files[0];
+    if(!file) return;
+    const reader = new FileReader();
+    reader.onload = ev=>{
+      try{
+        const config = JSON.parse(ev.target.result);
+        config.forEach(item=>{
+          const b = BUILDINGS.find(x=>x.id===item.id);
+          if(!b) return;
+          b.x = item.x ?? b.x;
+          b.y = item.y ?? b.y;
+          b.z = item.z ?? b.z;
+          b.rotY = (item.rotY ?? 0) * Math.PI/180;
+          b.scaleX = item.scaleX ?? 1;
+          b.scaleY = item.scaleY ?? 1;
+          b.scaleZ = item.scaleZ ?? 1;
+          // glbFile 只記錄檔名，實際檔案需重新上傳
+          b.glbFile = item.glbFile ?? null;
+          b.hasGlb = false; // 重開後快取不存在，標記為幾何體，等使用者重新上傳
+          // 重建場景中的 mesh
+          placeBuilding(b, null);
+        });
+        renderList();
+        showToast('✅ 載入完成，GLB 請重新上傳');
+      } catch(err){
+        showToast('❌ JSON 格式錯誤');
+        console.error(err);
+      }
+    };
+    reader.readAsText(file);
+    e.target.value='';
+  });
+});
+
+// ── 點擊選取 ─────────────────────────────────────────
+const raycaster = new THREE.Raycaster();
+const mouse = new THREE.Vector2();
+renderer.domElement.addEventListener('click', (e)=>{
+  if(controls.state !== -1) return; // 拖曳中不選取
+  const rect = renderer.domElement.getBoundingClientRect();
+  mouse.x = ((e.clientX-rect.left)/rect.width)*2-1;
+  mouse.y = -((e.clientY-rect.top)/rect.height)*2+1;
+  raycaster.setFromCamera(mouse, camera);
+  const meshList = Object.values(buildingMeshes);
+  const hits = raycaster.intersectObjects(meshList, true);
+  if(hits.length>0){
+    let obj = hits[0].object;
+    while(obj.parent && !obj.userData.buildingId) obj=obj.parent;
+    if(obj.userData.buildingId) selectBuilding(obj.userData.buildingId);
+  }
+});
+
+// ── 拖放 GLB ─────────────────────────────────────────
+const dropZone = document.getElementById('drop-zone');
+dropZone.addEventListener('dragover', e=>{ e.preventDefault(); dropZone.style.borderColor='#c8a060'; });
+dropZone.addEventListener('dragleave', ()=>{ dropZone.style.borderColor='#3a2e1e'; });
+dropZone.addEventListener('drop', e=>{
+  e.preventDefault(); dropZone.style.borderColor='#3a2e1e';
+  const file = e.dataTransfer.files[0];
+  if(file && file.name.endsWith('.glb') && selectedId) loadGLB(file, selectedId);
+  else if(!selectedId) showToast('請先選取左側建築');
+  else showToast('請選擇 .glb 檔案');
+});
+document.getElementById('file-input').addEventListener('change', e=>{
+  const file = e.target.files[0];
+  if(file && selectedId) loadGLB(file, selectedId);
+  else if(!selectedId) showToast('請先選取左側建築');
+  e.target.value='';
+});
+
+// ── Toast ─────────────────────────────────────────────
+let toastTimer;
+function showToast(msg){
+  const t = document.getElementById('toast');
+  t.textContent = msg; t.classList.add('show');
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(()=>t.classList.remove('show'), 2000);
+}
+
+// ── 座標顯示 ─────────────────────────────────────────
+function updateCoords(b){
+  document.getElementById('coords').textContent =
+    `${b.name}  位置(${b.x}, ${b.y}, ${b.z})  旋轉 ${Math.round(b.rotY*180/Math.PI)}°  縮放(${b.scaleX.toFixed(2)}, ${b.scaleY.toFixed(2)}, ${b.scaleZ.toFixed(2)})`;
+}
+
+// ── Resize ────────────────────────────────────────────
+function resize(){
+  const area = document.getElementById('preview-area');
+  const w = area.clientWidth, h = area.clientHeight;
+  renderer.setSize(w, h);
+  camera.aspect = w/h;
+  camera.updateProjectionMatrix();
+}
+window.addEventListener('resize', resize);
+resize();
+
+// ── 動畫迴圈 ─────────────────────────────────────────
+function loop(){
+  requestAnimationFrame(loop);
+  controls.update();
+  renderer.render(scene, camera);
+}
+
+// ── 遊戲 HTML 匯入/匯出 ─────────────────────────────
+let gameHtmlContent = null;
+let gameHtmlFilename = 'Abyss_new.html';
+
+// 拖放 HTML
+function handleHtmlDrop(e){
+  const file = e.dataTransfer.files[0];
+  if(file && file.name.endsWith('.html')) loadGameHtml(file);
+  else showToast('請選擇 .html 檔案');
+}
+document.getElementById('html-input').addEventListener('change', e=>{
+  const file = e.target.files[0];
+  if(file) loadGameHtml(file);
+  e.target.value='';
+});
+
+function loadGameHtml(file){
+  gameHtmlFilename = file.name.replace('.html','') + '_edited.html';
+  const reader = new FileReader();
+  reader.onload = e=>{
+    gameHtmlContent = e.target.result;
+    document.getElementById('html-status').textContent = '✅ ' + file.name;
+    document.getElementById('html-status').style.color = '#5a9a5a';
+    const btn = document.getElementById('export-html-btn');
+    btn.disabled = false; btn.style.opacity = '1';
+    showToast('✅ ' + file.name + ' 載入完成');
+  };
+  reader.readAsText(file);
+}
+
+// 匯出修改後的 HTML
+async function exportHTML(){
+  if(!gameHtmlContent){ showToast('請先匯入遊戲 HTML'); return; }
+  showToast('處理中...');
+
+  let output = gameHtmlContent;
+
+  const bFountain   = BUILDINGS.find(x=>x.id==='fountain');
+  const bBlacksmith = BUILDINGS.find(x=>x.id==='blacksmith');
+  const bArmor      = BUILDINGS.find(x=>x.id==='armor');
+
+  // 重點：編輯器裡的 b.scaleX 已經是「最終縮放值」(autoScaleBase/maxDim)，
+  // 所以匯出的遊戲程式碼直接用 model.scale.setScalar(b.scaleX)，不再除以 maxDim，
+  // 這樣遊戲內看到的大小才會跟編輯器預覽一致。
+
+  // ── 1. 噴泉 ──────────────────────────────────────────
+  if(bFountain){
+    const f = bFountain;
+    const glbName = f.hasGlb && f.glbFile ? f.glbFile : '噴泉廣場.glb';
+
+    // 更新 FOUNTAIN_GLB_PATH
+    output = output.replace(
+      /const FOUNTAIN_GLB_PATH\s*=\s*["'][^"']*["'];/,
+      `const FOUNTAIN_GLB_PATH = "${glbName}";`
+    );
+
+    // 更新噴泉幾何體備用位置
+    output = output.replace(
+      /fountain\.position\.set\([^)]+\)/,
+      `fountain.position.set(${f.x},${f.y},${f.z})`
+    );
+
+    // 把「const scale = X / maxDim; model.scale.setScalar(scale);」整段
+    // 改成直接用最終縮放值，不再除 maxDim
+    output = output.replace(
+      /const scale\s*=\s*[\d.]+\s*\/\s*maxDim;\s*model\.scale\.setScalar\(scale\);/,
+      `model.scale.setScalar(${f.scaleX.toFixed(4)});`
+    );
+
+    // 更新噴泉 GLB 載入後的 model.position.set
+    output = output.replace(
+      /model\.position\.set\(0,\s*-box2\.min\.y,\s*[\d.-]+\)/,
+      `model.position.set(${f.x},-box2.min.y,${f.z})`
+    );
+  }
+
+  // ── 2. 鐵匠鋪 ────────────────────────────────────────
+  if(bBlacksmith){
+    const b = bBlacksmith;
+    const glbName = b.hasGlb && b.glbFile ? b.glbFile : '鐵匠鋪.glb';
+
+    // 更新幾何體位置（備用）
+    output = output.replace(
+      /wShop\.position\.set\([^)]+\)/,
+      `wShop.position.set(${b.x},${b.y},${b.z})`
+    );
+    output = output.replace(
+      /wSign\.position\.set\([^)]+\)/,
+      `wSign.position.set(${b.x},${(b.y+2.7).toFixed(2)},${(b.z+3.1).toFixed(2)})`
+    );
+
+    // GLB 載入程式碼（直接用最終縮放值，不除 maxDim）
+    const blacksmithGlbBlock =
+'  // 載入 GLB 鐵匠鋪模型\n' +
+'  (()=>{\n' +
+'    const _bsLoader = new THREE.GLTFLoader();\n' +
+"    _bsLoader.load('" + glbName + "', (gltf)=>{\n" +
+'      const model = gltf.scene;\n' +
+'      model.scale.setScalar(' + b.scaleX.toFixed(4) + ');\n' +
+'      const box2 = new THREE.Box3().setFromObject(model);\n' +
+'      model.position.set(' + b.x + ',-box2.min.y,' + b.z + ');\n' +
+'      model.rotation.y = ' + b.rotY.toFixed(4) + ';\n' +
+'      model.traverse(o=>{ if(o.isMesh){ o.castShadow=true; o.receiveShadow=true; } });\n' +
+'      townGroup.remove(wShop);\n' +
+'      townGroup.add(model);\n' +
+"      console.log('鐵匠鋪 GLB 載入完成');\n" +
+"    }, undefined, (err)=>{ console.warn('鐵匠鋪 GLB 載入失敗', err); });\n" +
+'  })();';
+
+    // 已有區塊就替換，否則插入到 shop_weapon 那段之後
+    if(/\/\/ 載入 GLB 鐵匠鋪模型/.test(output)){
+      output = output.replace(
+        /\/\/ 載入 GLB 鐵匠鋪模型[\s\S]*?\}\)\(\);/,
+        blacksmithGlbBlock
+      );
+    } else {
+      output = output.replace(
+        /(town\.interactables\.push\(\{type:"shop_weapon"[^}]+\}\);)/,
+        `$1\n${blacksmithGlbBlock}`
+      );
+    }
+  }
+
+  // ── 3. 防具店 ─────────────────────────────────────────
+  if(bArmor){
+    const a = bArmor;
+    output = output.replace(
+      /aShop\.position\.set\([^)]+\)/,
+      `aShop.position.set(${a.x},${a.y},${a.z})`
+    );
+    output = output.replace(
+      /aSign\.position\.set\([^)]+\)/,
+      `aSign.position.set(${a.x},${(a.y+2.7).toFixed(2)},${(a.z+3.1).toFixed(2)})`
+    );
+  }
+
+  // ── 下載 ──────────────────────────────────────────────
+  const blob = new Blob([output], {type:'text/html'});
+  const dl = document.createElement('a');
+  dl.href = URL.createObjectURL(blob);
+  dl.download = gameHtmlFilename;
+  dl.click();
+  showToast('✅ 匯出 ' + gameHtmlFilename);
+}
+
+// ── 啟動 ─────────────────────────────────────────────
+initBuildings();
+renderList();
+loop();
+</script>
+</body>
+</html>

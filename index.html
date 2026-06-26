@@ -310,6 +310,10 @@
 </div>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/GLTFLoader.js"></script>
+<script>
+const FOUNTAIN_GLB_PATH = "噴泉廣場.glb";
+</script>
 <script>
 "use strict";
 /* ============================================================
@@ -322,6 +326,9 @@ const MAP = 44;                 // 地圖格數
 const MAX_FLOOR = 5;
 
 let scene, camera, renderer, clock;
+let charMixer = null, charAnimations = {};
+let charActions = {};  // walk, idle, talk, hit, attack, run
+let currentCharAction = null;
 let dungeon = null;             // 目前樓層資料
 let player = null;
 let enemies = [];
@@ -386,6 +393,7 @@ function initThree(){
 
   camera = new THREE.PerspectiveCamera(46, innerWidth/innerHeight, 0.1, 120);
 
+
   renderer = new THREE.WebGLRenderer({antialias:true});
   renderer.setSize(innerWidth, innerHeight);
   renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
@@ -395,6 +403,7 @@ function initThree(){
 
   ambientLight = new THREE.AmbientLight(0x4a3d2e, 0.95);
   scene.add(ambientLight);
+  
   sunLight = new THREE.DirectionalLight(0x3a4658, 0.4);
   sunLight.position.set(18, 34, 14);
   sunLight.castShadow = true;
@@ -411,6 +420,7 @@ function initThree(){
     renderer.setSize(innerWidth, innerHeight);
   });
 }
+
 
 // ---------- 明暗切換 ----------
 function applyLighting(mode){
@@ -430,7 +440,10 @@ function applyLighting(mode){
     document.body.classList.remove("town");
     if(pm){ pm.lamp.visible = true; pm.halo.visible = true; }
   }
+  // 城鎮←→地城切換時更新劍
+  setTimeout(()=>updatePlayerSword(), 100);
 }
+
 
 // ---------- 地牢生成 ----------
 function genDungeon(){
@@ -617,51 +630,210 @@ function addTorch(x,z,room){
 }
 
 // ---------- 角色模型 ----------
+
+// ── 角色動畫切換 helper ──────────────────────────────
+function playCharAnim(name, loop=true, force=false){
+  if(!charActions[name]) return;
+  if(currentCharAction === charActions[name]) return;
+  // attack/hit 播放中，walk/idle 不打斷（force=true 時跳過保護，供 finished 事件使用）
+  if(!force && (name==='walk'||name==='idle') && currentCharAction){
+    const a = charActions['attack'], h = charActions['hit'];
+    if(currentCharAction===a || currentCharAction===h) return;
+  }
+  // 從 attack/hit 切出時用較長的 fade，讓下半身過渡更平滑
+  const isFromOneshot = currentCharAction===charActions['attack'] || currentCharAction===charActions['hit'];
+  const fadeTime = isFromOneshot ? 0.35 : 0.12;
+  if(currentCharAction) currentCharAction.fadeOut(fadeTime);
+  const action = charActions[name];
+  action.reset().fadeIn(fadeTime);
+  action.setLoop(loop ? THREE.LoopRepeat : THREE.LoopOnce, Infinity);
+  if(!loop) action.clampWhenFinished = false;
+  action.play();
+  currentCharAction = action;
+}
+
 function makeHero(){
   const grp = new THREE.Group();
-  const armorMat = new THREE.MeshStandardMaterial({color:0x6a6a72, roughness:0.45, metalness:0.55});
-  const clothMat = new THREE.MeshStandardMaterial({color:0x4a1414, roughness:0.9});
-  const skinMat  = new THREE.MeshStandardMaterial({color:0xc9a884, roughness:0.8});
-
-  const body = new THREE.Mesh(new THREE.CylinderGeometry(0.3,0.38,0.85,8), armorMat);
-  body.position.y=0.95; body.castShadow=true;
-  const skirt = new THREE.Mesh(new THREE.CylinderGeometry(0.38,0.46,0.4,8), clothMat);
-  skirt.position.y=0.42;
-  const head = new THREE.Mesh(new THREE.SphereGeometry(0.22,10,10), skinMat);
-  head.position.y=1.62;
-  const helm = new THREE.Mesh(new THREE.CylinderGeometry(0.24,0.26,0.18,8), armorMat);
-  helm.position.y=1.74;
-  // 劍臂
+  // 暫用隱形佔位物件（GLB 載入前）
+  const placeholder = new THREE.Mesh(
+    new THREE.CylinderGeometry(0.3,0.3,1.7,8),
+    new THREE.MeshStandardMaterial({color:0x888888, transparent:true, opacity:0.0})
+  );
+  placeholder.position.y = 0.85;
+  grp.add(placeholder);
+  // 保留 swordArm 佔位讓舊的 swing 動畫不報錯
   const swordArm = new THREE.Group();
-  const arm = new THREE.Mesh(new THREE.CylinderGeometry(0.08,0.08,0.5,6), armorMat);
-  arm.position.y=-0.25;
-  const blade = new THREE.Mesh(new THREE.BoxGeometry(0.07,1.0,0.16),
-    new THREE.MeshStandardMaterial({color:0xc8ccd8, metalness:0.85, roughness:0.25}));
-  blade.position.set(0,-0.85,0.18);
-  const guard = new THREE.Mesh(new THREE.BoxGeometry(0.3,0.06,0.08), new THREE.MeshStandardMaterial({color:0x8a6a2a, metalness:0.7}));
-  guard.position.set(0,-0.5,0.16);
-  swordArm.add(arm,blade,guard);
-  swordArm.position.set(0.42,1.35,0);
-  swordArm.rotation.z = -0.4;
-  // 盾臂
-  const shieldArm = new THREE.Mesh(new THREE.CylinderGeometry(0.08,0.08,0.5,6), armorMat);
-  shieldArm.position.set(-0.4,1.1,0); shieldArm.rotation.z=0.35;
-
-  grp.add(body,skirt,head,helm,swordArm,shieldArm);
-  grp.traverse(o=>{if(o.isMesh)o.castShadow=true;});
   grp.userData.swordArm = swordArm;
 
-  // 主角光源(火把照明)
-  const lamp = new THREE.PointLight(0xffc888, 2.6, 22, 1.3);
+  // 載入角色 GLB
+(()=>{
+    const loader = new THREE.GLTFLoader();
+    
+    // 改為直接讀取外部檔案
+    loader.load('hero.glb', (gltf)=>{
+        const model = gltf.scene;
+        // 自動縮放：讓角色高度約 1.8 單位
+        const box = new THREE.Box3().setFromObject(model);
+        console.log('模型動畫列表:', gltf.animations);
+      const h = box.getSize(new THREE.Vector3()).y;
+      const scale = 2.7 / h;
+      model.scale.setScalar(scale);
+      // 對齊地面
+      const box2 = new THREE.Box3().setFromObject(model);
+      model.position.y = -box2.min.y;
+      model.rotation.y = Math.PI * 1.5;  // 修正 Tripo 模型朝向（270度）
+      model.traverse(o=>{
+        if(o.isMesh){
+          o.castShadow=true;
+          o.receiveShadow=true;
+          if(o.material){
+            o.material.needsUpdate = true;
+          }
+        }
+      });
+      grp.remove(placeholder);
+      grp.add(model);
+
+      // ----- 建立角色專屬頭頂跟隨光 -----
+const charLight = new THREE.PointLight(0xfff4e0, 7, 3);
+// 參數解析：( 顏色: 帶點溫暖的白光, 強度: 2.5, 光照半徑/衰減距離: 7 )
+
+charLight.position.set(0, 3.5, 0);
+// 關鍵：將 Y 軸設為 3.5，讓這盞燈剛好懸浮在角色的「頭頂正上方」
+
+// 如果你想讓這盞頭頂燈也能投射陰影（會很有地牢探險的立體感，但稍耗效能）
+//charLight.castShadow = true;
+//charLight.shadow.mapSize.width = 512;
+//charLight.shadow.mapSize.height = 512;
+//charLight.shadow.bias = -0.002;
+
+// 【核心步驟】直接把燈塞給角色 Mesh
+player.mesh.add(charLight);
+
+      // ── 材質強化（與骨架無關，獨立 traverse）──
+      model.traverse(o => {
+        if(o.isMesh){
+          o.castShadow = true;
+          o.receiveShadow = true;
+          if(o.material){
+            o.material = o.material.clone();
+            if(o.material.color) o.material.color.multiplyScalar(1.28);
+            if("metalness" in o.material) o.material.metalness = 0.0;
+            if("roughness" in o.material) o.material.roughness = 0.48;
+            o.material.emissive = new THREE.Color(0xffffff);
+            if(o.material.map){
+              o.material.emissiveMap = o.material.map;
+              o.material.emissiveIntensity = 0.98;
+            } else {
+              o.material.emissive = new THREE.Color(0x3a3a3a);
+              o.material.emissiveIntensity = 1.15;
+            }
+            o.material.needsUpdate = true;
+          }
+        }
+      });
+
+      // ── Mixer root = model（Armature 根節點）──
+      const mixerRoot = model;
+      charMixer = new THREE.AnimationMixer(mixerRoot);
+      charMixer.timeScale = 1.0;
+
+      // ── 動畫 clip 對應（按 hero.glb 實際順序硬寫）──
+      // [0] NlaTrack     2.38s  walk
+      // [1] NlaTrack.001 17.1s  talk
+      // [2] NlaTrack.002 1.54s  hit
+      // [3] NlaTrack.003 2.21s  attack
+      // [4] NlaTrack.004 17.6s  idle
+      // [5] NlaTrack.005 1.29s  run
+      const animMap = ['walk','talk','hit','attack','idle','run'];
+      const clips = gltf.animations;
+
+      // 移除 Root Motion
+      clips.forEach(clip => {
+        clip.tracks = clip.tracks.filter(track => {
+          const parts = track.name.split('.');
+          const prop = parts[parts.length - 1];
+          const bone = parts[0];
+          if((bone === 'Root' || bone === 'Hip') && prop === 'position') return false;
+          return true;
+        });
+        clip.resetDuration();
+      });
+
+      clips.forEach((clip, i) => {
+        const slotName = animMap[i] || ('anim' + i);
+        const action = charMixer.clipAction(clip);
+        action.enabled = true;
+        charActions[slotName] = action;
+        charAnimations[slotName] = clip;
+        console.log(`動畫[${i}] ${slotName} → "${clip.name}" ${clip.duration.toFixed(2)}s`);
+      });
+
+      // ── attack/hit clip 移除下半身 track ──
+      // attack clip 的腿骨 pose 與 idle/walk 差 120°+，會造成切換時腿部閃動。
+      // 直接把下半身 track 從 clip 刪掉，切換時下半身只做短暫 crossfade 不會扭曲。
+      const lowerBones = new Set([
+        'Root','Hip','Pelvis',
+        'L_Thigh','L_ThighTwist01','L_ThighTwist02',
+        'L_Calf','L_CalfTwist01','L_CalfTwist02',
+        'L_Foot','L_ToeBase',
+        'R_Thigh','R_ThighTwist01','R_ThighTwist02',
+        'R_Calf','R_CalfTwist01','R_CalfTwist02',
+        'R_Foot','R_ToeBase',
+      ]);
+      ['attack','hit'].forEach(slot => {
+        const clip = charAnimations[slot];
+        if(!clip) return;
+        clip.tracks = clip.tracks.filter(t => !lowerBones.has(t.name.split('.')[0]));
+        clip.resetDuration();
+        console.log(`✅ ${slot} 下半身 track 已移除，剩 ${clip.tracks.length} tracks`);
+      });
+
+      // attack/hit 結束後切回 idle
+      charMixer.addEventListener('finished', e => {
+        if(!player || gameState !== 'play') return;
+        if(e.action === charActions['attack'] || e.action === charActions['hit']){
+          // force=true 跳過 oneshot 保護，確保一定切回 idle
+          playCharAnim('idle', true, true);
+        }
+      });
+
+      // 強制播放待機
+      const ia = charActions['idle'];
+      if(ia){ ia.reset(); ia.setEffectiveWeight(1); ia.setEffectiveTimeScale(1); ia.setLoop(THREE.LoopRepeat, Infinity); ia.play(); currentCharAction = ia; }
+
+      // ── 找到 R_Hand 骨骼，記住引用供每幀追蹤 ──
+      let rHandBone = null;
+      model.traverse(o => {
+        if(o.name === 'R_Hand') rHandBone = o;
+      });
+      if(rHandBone){
+        grp.userData.rHandBone = rHandBone;
+        console.log('✅ R_Hand 骨骼找到:', rHandBone.name);
+      } else {
+        console.warn('⚠️ R_Hand 骨骼未找到，列出所有骨骼：');
+        model.traverse(o => console.log(' ', o.name, o.type));
+      }
+      console.log('✅ 角色載入完成');
+    }, undefined, (err)=>console.warn('角色載入失敗', err));
+  })();
+
+  // 主角材質本身負責"看起來較亮"；這兩盞是真正會照亮周圍的燈。
+  // 城鎮模式會在 applyLighting('town') 關閉；地牢模式會在 applyLighting('dungeon') 開啟。
+  // 這樣城鎮背景不會被補光影響，但地牢仍保留主角手上燈光的玩法感。
+  const lamp = new THREE.PointLight(0xffecd0, 5.2, 22, 1.25);
   lamp.position.y = 2.8;
-  lamp.castShadow = true;
-  lamp.shadow.mapSize.set(512,512);
+  lamp.castShadow = false; // 手持燈只負責照明，不投射主角自身的巨大陰影
+  // lamp.shadow.mapSize.set(512,512);
+  lamp.visible = false;
   grp.add(lamp);
-  // 近身柔光,讓主角周圍維持正常亮度
-  const halo = new THREE.PointLight(0xffd8a0, 1.4, 9, 2);
+
+  const halo = new THREE.PointLight(0xffffff, 1.25, 5.5, 2.0);
   halo.position.y = 1.4;
+  halo.visible = false;
   grp.add(halo);
-  grp.userData.lamp = lamp;   // 地牢照明燈(城鎮可關閉)
+
+  grp.userData.lamp = lamp;
   grp.userData.halo = halo;
   return grp;
 }
@@ -808,6 +980,183 @@ function recalcStats(){
 // 有效攻擊力 = 武器 + 等級加成
 function effDmg(){ return player.weaponDmg + player.levelBonus; }
 
+// ── 建造各把劍的 Three.js 幾何體 ──
+function makeSwordMesh(weaponId){
+  const grp = new THREE.Group();
+
+  if(!weaponId || weaponId === null){
+    // 生鏽短劍（初始）
+    const bladeMat = new THREE.MeshStandardMaterial({color:0x7a6a52, roughness:0.9, metalness:0.2});
+    const blade = new THREE.Mesh(new THREE.BoxGeometry(0.04, 0.28, 0.008), bladeMat);
+    blade.position.y = 0.17;
+    // 缺口感（稍微旋轉一小塊）
+    const nick = new THREE.Mesh(new THREE.BoxGeometry(0.015,0.015,0.012),
+      new THREE.MeshStandardMaterial({color:0x2a1a08}));
+    nick.position.set(-0.022, 0.12, 0); grp.add(nick);
+    const guardMat = new THREE.MeshStandardMaterial({color:0x5a4a32, roughness:0.85});
+    const guard = new THREE.Mesh(new THREE.BoxGeometry(0.12, 0.016, 0.012), guardMat);
+    guard.position.y = 0.03;
+    const handle = new THREE.Mesh(new THREE.CylinderGeometry(0.012,0.014,0.1,6), guardMat);
+    handle.position.y = -0.02;
+    const pommel = new THREE.Mesh(new THREE.SphereGeometry(0.018,6,6), guardMat);
+    pommel.position.y = -0.075;
+    grp.add(blade, guard, handle, pommel);
+
+  } else if(weaponId === 'w_iron'){
+    // 鐵劍
+    const bladeMat = new THREE.MeshStandardMaterial({color:0xa0a8b0, roughness:0.4, metalness:0.8});
+    const blade = new THREE.Mesh(new THREE.BoxGeometry(0.045, 0.36, 0.008), bladeMat);
+    blade.position.y = 0.22;
+    // 血槽
+    const groove = new THREE.Mesh(new THREE.BoxGeometry(0.008, 0.28, 0.004),
+      new THREE.MeshStandardMaterial({color:0x8090a0, roughness:0.5, metalness:0.6}));
+    groove.position.y = 0.22;
+    const guardMat = new THREE.MeshStandardMaterial({color:0x707880, roughness:0.4, metalness:0.7});
+    const guard = new THREE.Mesh(new THREE.BoxGeometry(0.18, 0.018, 0.014), guardMat);
+    guard.position.y = 0.03;
+    const handle = new THREE.Mesh(new THREE.CylinderGeometry(0.014,0.016,0.12,8), 
+      new THREE.MeshStandardMaterial({color:0x505860, roughness:0.7}));
+    handle.position.y = -0.03;
+    const pommel = new THREE.Mesh(new THREE.BoxGeometry(0.05,0.028,0.022),
+      new THREE.MeshStandardMaterial({color:0x707880, roughness:0.4, metalness:0.7}));
+    pommel.position.y = -0.1;
+    grp.add(blade, groove, guard, handle, pommel);
+
+  } else if(weaponId === 'w_mace'){
+    // 鋼劍（原 w_mace 槽位）
+    const bladeMat = new THREE.MeshStandardMaterial({color:0xc8cdd8, roughness:0.25, metalness:0.9});
+    // 主刀刃（略寬）
+    const blade = new THREE.Mesh(new THREE.BoxGeometry(0.058, 0.42, 0.009), bladeMat);
+    blade.position.y = 0.26;
+    // 血槽
+    const groove = new THREE.Mesh(new THREE.BoxGeometry(0.01, 0.34, 0.004),
+      new THREE.MeshStandardMaterial({color:0x9098a8, roughness:0.3, metalness:0.8}));
+    groove.position.y = 0.26;
+    // 護手（十字大型）
+    const guardMat = new THREE.MeshStandardMaterial({color:0x8090a8, roughness:0.3, metalness:0.85});
+    const guardH = new THREE.Mesh(new THREE.BoxGeometry(0.22, 0.02, 0.016), guardMat);
+    guardH.position.y = 0.04;
+    const guardEnd1 = new THREE.Mesh(new THREE.BoxGeometry(0.028,0.022,0.018), guardMat);
+    guardEnd1.position.set(-0.12, 0.04, 0);
+    const guardEnd2 = guardEnd1.clone(); guardEnd2.position.x = 0.12;
+    // 中央寶石
+    const gem = new THREE.Mesh(new THREE.SphereGeometry(0.012,8,8),
+      new THREE.MeshStandardMaterial({color:0x70a0c0, emissive:0x204060, roughness:0.1, metalness:0.3}));
+    gem.position.y = 0.04;
+    // 劍柄
+    const handle = new THREE.Mesh(new THREE.CylinderGeometry(0.016,0.018,0.13,8),
+      new THREE.MeshStandardMaterial({color:0x282830, roughness:0.8}));
+    handle.position.y = -0.025;
+    // 鋼環
+    const ring1 = new THREE.Mesh(new THREE.CylinderGeometry(0.02,0.02,0.008,8),
+      new THREE.MeshStandardMaterial({color:0x8090a8, roughness:0.3, metalness:0.85}));
+    ring1.position.y = 0.01; 
+    const ring2 = ring1.clone(); ring2.position.y = -0.05;
+    // 八角柄尾
+    const pommel = new THREE.Mesh(new THREE.CylinderGeometry(0.026,0.022,0.032,8),
+      new THREE.MeshStandardMaterial({color:0x8090a8, roughness:0.3, metalness:0.85}));
+    pommel.position.y = -0.1;
+    grp.add(blade, groove, guardH, guardEnd1, guardEnd2, gem, handle, ring1, ring2, pommel);
+
+  } else if(weaponId === 'w_rune'){
+    // 符文戰刃（發光大劍）
+    const bladeMat = new THREE.MeshStandardMaterial({
+      color:0x2a3a7a, roughness:0.1, metalness:0.5,
+      emissive:0x1a2a6a, emissiveIntensity:0.6
+    });
+    const blade = new THREE.Mesh(new THREE.BoxGeometry(0.072, 0.48, 0.01), bladeMat);
+    blade.position.y = 0.30;
+    // 中央亮帶
+    const core = new THREE.Mesh(new THREE.BoxGeometry(0.014, 0.40, 0.012),
+      new THREE.MeshStandardMaterial({color:0x80b0ff, emissive:0x4080ff, emissiveIntensity:1.2, roughness:0.0, metalness:0.0}));
+    core.position.y = 0.30;
+    // 符文光點（4個）
+    const runeGeo = new THREE.SphereGeometry(0.01,6,6);
+    const runeMat = new THREE.MeshBasicMaterial({color:0xa0d8ff});
+    [-0.18,-0.06,0.06,0.18].forEach(oy=>{
+      const r = new THREE.Mesh(runeGeo, runeMat);
+      r.position.set(0, 0.30+oy*1.6, 0.008);
+      grp.add(r);
+    });
+    // 蝙蝠翼護手
+    const wingMat = new THREE.MeshStandardMaterial({color:0x1a2a60, roughness:0.3, metalness:0.6, emissive:0x0a1a40, emissiveIntensity:0.3});
+    const wingL = new THREE.Mesh(new THREE.BoxGeometry(0.1,0.016,0.014), wingMat);
+    wingL.position.set(-0.07, 0.03, 0);
+    const wingR = wingL.clone(); wingR.position.x = 0.07;
+    // 翼端爪
+    const clawGeo = new THREE.ConeGeometry(0.01,0.03,5);
+    const clawL = new THREE.Mesh(clawGeo, wingMat);
+    clawL.rotation.z = Math.PI/2; clawL.position.set(-0.13,0.03,0);
+    const clawR = clawL.clone(); clawR.position.x = 0.13; clawR.rotation.z = -Math.PI/2;
+    // 護手寶石
+    const guardGem = new THREE.Mesh(new THREE.SphereGeometry(0.016,8,8),
+      new THREE.MeshStandardMaterial({color:0x2060c0, emissive:0x4080ff, emissiveIntensity:1.5, roughness:0.0}));
+    guardGem.position.y = 0.03;
+    // 劍柄
+    const handle = new THREE.Mesh(new THREE.CylinderGeometry(0.016,0.018,0.14,8),
+      new THREE.MeshStandardMaterial({color:0x0e1830, roughness:0.7, emissive:0x0a1040, emissiveIntensity:0.2}));
+    handle.position.y = -0.03;
+    // 符文環
+    const rr1 = new THREE.Mesh(new THREE.CylinderGeometry(0.02,0.02,0.006,8),
+      new THREE.MeshStandardMaterial({color:0x4060a0, emissive:0x2040a0, emissiveIntensity:0.8}));
+    rr1.position.y = 0.0;
+    const rr2 = rr1.clone(); rr2.position.y = -0.06;
+    // 球形柄尾寶石
+    const pommelOut = new THREE.Mesh(new THREE.SphereGeometry(0.024,8,8),
+      new THREE.MeshStandardMaterial({color:0x1a2a60, roughness:0.2, metalness:0.5}));
+    pommelOut.position.y = -0.115;
+    const pommelGem = new THREE.Mesh(new THREE.SphereGeometry(0.014,8,8),
+      new THREE.MeshStandardMaterial({color:0x4080ff, emissive:0x2060ff, emissiveIntensity:1.8, roughness:0.0}));
+    pommelGem.position.y = -0.115;
+    // 發光點光源
+    const runeLight = new THREE.PointLight(0x4080ff, 0.8, 2.5);
+    runeLight.position.y = 0.3;
+    grp.add(blade, core, wingL, wingR, clawL, clawR, guardGem, handle, rr1, rr2, pommelOut, pommelGem, runeLight);
+  }
+
+  return grp;
+}
+
+// ── 更新角色手上的劍（劍掛在 scene，每幀追蹤骨骼）──
+let _currentSwordMesh = null;
+
+function updatePlayerSword(){
+  // 清除舊劍
+  if(_currentSwordMesh){
+    scene.remove(_currentSwordMesh);
+    _currentSwordMesh = null;
+  }
+  if(!player || !player.mesh) return;
+  // 城鎮模式不顯示劍
+  if(worldMode !== 'dungeon') return;
+  // 骨骼未載入完成則不顯示（loadFloor 後 GLB 非同步，但重進地城時已載入）
+  if(!player.mesh.userData.rHandBone) return;
+
+  const sword = makeSwordMesh(player.weaponId);
+  sword.name = 'playerSword';
+  scene.add(sword);
+  _currentSwordMesh = sword;
+}
+
+// ── 每幀讓劍跟著 R_Hand 骨骼走（在 update() 裡呼叫）──
+function syncSwordToHand(){
+  if(!_currentSwordMesh || !player || !player.mesh) return;
+  const bone = player.mesh.userData.rHandBone;
+  if(!bone) return;
+
+  // 更新骨骼世界矩陣
+  bone.updateWorldMatrix(true, false);
+  const boneWorld = new THREE.Matrix4().copy(bone.matrixWorld);
+
+  // 偏移矩陣：調整劍在手心的位置與朝向
+  // 這些值依骨骼座標系調整：y=沿手指方向，x=側向，z=手背
+  const offset = new THREE.Matrix4().makeRotationX(Math.PI * 0.5);
+  offset.setPosition(0, 0.12, 0);
+
+  _currentSwordMesh.matrix.copy(boneWorld).multiply(offset);
+  _currentSwordMesh.matrixAutoUpdate = false;
+}
+
 // ---------- 樓層切換 ----------
 function loadFloor(){
   worldMode = "dungeon";
@@ -825,6 +1174,7 @@ function loadFloor(){
   initPlayer(toWorld(dungeon.rooms[0].cx, dungeon.rooms[0].cy));
   spawnEnemies();
   applyLighting("dungeon");
+  // applyLighting 已透過 setTimeout 呼叫 updatePlayerSword
   $("floorLabel").textContent = "地牢 " + FLOOR_NAMES[floorNum-1];
   logMsg(floorNum===MAX_FLOOR ? "空氣中瀰漫著腐敗的氣息……深淵領主就在此處。" : "你踏入了" + FLOOR_NAMES[floorNum-1] + "。後方的紫色傳送門可隨時返回小鎮。");
 }
@@ -881,7 +1231,8 @@ function burst(pos, color, n=10, spread=3){
 function playerAttack(target){
   if(player.atkCd>0) return;
   player.atkCd = 0.55;
-  player.swing = 1;
+  player.swing = 0; // 停用舊 swordArm 系統，改由 GLB attack clip 負責
+  playCharAnim('attack', false);
   const dmg = Math.round(effDmg()*(0.85+Math.random()*0.3));
   const crit = Math.random()<0.12;
   damageEnemy(target, crit? dmg*2 : dmg, crit);
@@ -939,6 +1290,8 @@ function hurtPlayer(raw){
   floater(player.mesh.position, dmg, "#ff4a3a", 20);
   $("hurtFlash").style.opacity=1;
   setTimeout(()=>$("hurtFlash").style.opacity=0, 120);
+  // 播放受擊動畫
+  if(charActions['hit']) playCharAnim('hit', false);
   updateHUD();
   if(player.hp<=0 && gameState==="play"){
     gameState="dead";
@@ -958,8 +1311,14 @@ function castFireball(targetPoint){
   if(player.fbCd>0) return;
   if(player.mp<10){ logMsg("法力不足!", "#6a8ad0"); return; }
   player.mp -= 10; player.fbCd = 0.45;
+  
   const dir = targetPoint.clone().sub(player.mesh.position); dir.y=0; dir.normalize();
-  player.mesh.rotation.y = Math.atan2(dir.x, dir.z);
+  
+  // 原本是：player.mesh.rotation.y = Math.atan2(dir.x, dir.z);
+  // 改為記錄目標角度 (確保 player 物件有 targetRotation 屬性)
+  player.targetRotation = Math.atan2(dir.x, dir.z); 
+  
+  playCharAnim('attack', false);
   const mesh = new THREE.Mesh(new THREE.SphereGeometry(0.22,8,8),
     new THREE.MeshBasicMaterial({color:0xff8830}));
   const light = new THREE.PointLight(0xff7020, 1.6, 6);
@@ -1103,18 +1462,34 @@ function buildTown(){
   townGroup = new THREE.Group();
   town = { bound:TOWN_BOUND, colliders:[], interactables:[] };
 
-  const ground = new THREE.Mesh(new THREE.BoxGeometry(TOWN_BOUND*2,0.4,TOWN_BOUND*2),
-    new THREE.MeshStandardMaterial({color:0x55663a, roughness:1}));
-  ground.position.y=-0.2; ground.receiveShadow=true;
+  // 石磚貼圖地板
+  const _stoneImg = new Image();
+  _stoneImg.src = 'stone_tile.png';
+  const _stoneTex = new THREE.Texture(_stoneImg);
+  _stoneImg.onload = () => { _stoneTex.needsUpdate = true; };
+  _stoneTex.wrapS = THREE.RepeatWrapping;
+  _stoneTex.wrapT = THREE.RepeatWrapping;
+  _stoneTex.repeat.set(TOWN_BOUND * 0.4, TOWN_BOUND * 0.4);
+  _stoneTex.anisotropy = renderer.capabilities.getMaxAnisotropy();
+
+  const ground = new THREE.Mesh(new THREE.PlaneGeometry(TOWN_BOUND*2, TOWN_BOUND*2),
+    new THREE.MeshStandardMaterial({map: _stoneTex, roughness:0.95, metalness:0.0, color:0x888070}));
+  ground.rotation.x = -Math.PI / 2;
+  ground.position.y = 0;
+  ground.receiveShadow = true;
   townGroup.add(ground);
 
-  // 中央廣場
-  const plaza = new THREE.Mesh(new THREE.CylinderGeometry(8,8,0.32,40),
-    new THREE.MeshStandardMaterial({color:0x9a8f7a, roughness:0.95}));
-  plaza.position.set(0,-0.03,2); plaza.receiveShadow=true;
+  // 中央廣場（同材質，稍微抬高避免 z-fighting）
+  const _plazaTex = _stoneTex.clone();
+  _plazaTex.repeat.set(3, 3);
+  _plazaTex.needsUpdate = true;
+  const plaza = new THREE.Mesh(new THREE.CylinderGeometry(8,8,0.05,48),
+    new THREE.MeshStandardMaterial({map: _plazaTex, roughness:0.9, color:0x888070}));
+  plaza.position.set(0, 0.01, 2);
+  plaza.receiveShadow = true;
   townGroup.add(plaza);
 
-  // 噴泉
+  // 噴泉 — GLB 模型（含載入中備用幾何體）
   const fountain = new THREE.Group();
   const fb = new THREE.Mesh(new THREE.CylinderGeometry(2.2,2.4,0.7,24),
     new THREE.MeshStandardMaterial({color:0x8a8078, roughness:0.9}));
@@ -1131,18 +1506,64 @@ function buildTown(){
   townGroup.add(fountain);
   town.colliders.push({minX:-2.5,maxX:2.5,minZ:-0.5,maxZ:4.5});
 
+  // 載入 GLB 噴泉模型
+  (()=>{
+    const loader = new THREE.GLTFLoader();
+    loader.load(FOUNTAIN_GLB_PATH, (gltf)=>{
+      const model = gltf.scene;
+      const box = new THREE.Box3().setFromObject(model);
+      const size = box.getSize(new THREE.Vector3());
+      const maxDim = Math.max(size.x, size.y, size.z);
+      model.scale.setScalar(0.1500);
+      const box2 = new THREE.Box3().setFromObject(model);
+      model.position.set(0,-box2.min.y,2);
+      model.traverse(o=>{
+        if(o.isMesh){
+          o.castShadow=true;
+          o.receiveShadow=true;
+          if(o.material){
+            // 稍微提亮噴泉，讓它跟參考圖一樣偏亮
+            o.material.emissive = new THREE.Color(0x1a1510);
+            o.material.emissiveIntensity = 1.0;
+            o.material.needsUpdate = true;
+          }
+        }
+      });
+      fountain.remove(fb,water,spout);
+      fountain.add(model);
+      console.log('✅ 噴泉 GLB 載入完成');
+    }, (xhr)=>{
+      if(xhr.total) console.log('載入中... ' + Math.round(xhr.loaded/xhr.total*100) + '%');
+    }, (err)=>{ console.warn('GLB載入失敗，使用備用幾何體', err); });
+  })();
+
   // 武器店(左)
   const wShop = makeBuilding(7,6,3.2,0x6a4a32,0x5a2418);
   wShop.position.set(-13,0,-4);
-  const wSign = makeSign("⚔"); wSign.position.set(-13,2.7,-0.9);
+  const wSign = makeSign("⚔"); wSign.position.set(-13,2.70,-0.90);
   townGroup.add(wShop,wSign);
   town.colliders.push({minX:-16.5,maxX:-9.5,minZ:-7,maxZ:-1});
   town.interactables.push({type:"shop_weapon", x:-13, z:0.4, label:"武器店 — 鐵匠鋪"});
+  // 載入 GLB 鐵匠鋪模型
+  (()=>{
+    const _bsLoader = new THREE.GLTFLoader();
+    _bsLoader.load('鐵匠鋪.glb', (gltf)=>{
+      const model = gltf.scene;
+      model.scale.setScalar(14.0000);
+      const box2 = new THREE.Box3().setFromObject(model);
+      model.position.set(-13,-box2.min.y,-4);
+      model.rotation.y = -1.9199;
+      model.traverse(o=>{ if(o.isMesh){ o.castShadow=true; o.receiveShadow=true; } });
+      townGroup.remove(wShop);
+      townGroup.add(model);
+      console.log('鐵匠鋪 GLB 載入完成');
+    }, undefined, (err)=>{ console.warn('鐵匠鋪 GLB 載入失敗', err); });
+  })();
 
   // 防具店(右)
   const aShop = makeBuilding(7,6,3.2,0x4a5a6a,0x2a3a48);
   aShop.position.set(13,0,-4);
-  const aSign = makeSign("🛡"); aSign.position.set(13,2.7,-0.9);
+  const aSign = makeSign("🛡"); aSign.position.set(13,2.70,-0.90);
   townGroup.add(aShop,aSign);
   town.colliders.push({minX:9.5,maxX:16.5,minZ:-7,maxZ:-1});
   town.interactables.push({type:"shop_armor", x:13, z:0.4, label:"防具店 — 甲匠鋪"});
@@ -1172,12 +1593,19 @@ function buildTown(){
   gate.position.set(0,0,-13.7);
   townGroup.add(gate);
 
-  // 圍牆
-  const wallMat = new THREE.MeshStandardMaterial({color:0x4a4438, roughness:0.95});
-  [[0,-TOWN_BOUND,TOWN_BOUND*2,1],[0,TOWN_BOUND,TOWN_BOUND*2,1],
-   [-TOWN_BOUND,0,1,TOWN_BOUND*2],[TOWN_BOUND,0,1,TOWN_BOUND*2]].forEach(([x,z,w,d])=>{
-    const m = new THREE.Mesh(new THREE.BoxGeometry(w,3,d), wallMat);
-    m.position.set(x,1.5,z); m.castShadow=true; townGroup.add(m);
+  // 圍牆（石磚貼圖）
+  const _wallTexH = _stoneTex.clone();
+  _wallTexH.repeat.set(TOWN_BOUND * 0.5, 1.2);
+  _wallTexH.needsUpdate = true;
+  const _wallTexV = _stoneTex.clone();
+  _wallTexV.repeat.set(1.2, 1.2);
+  _wallTexV.needsUpdate = true;
+  const wallMatH = new THREE.MeshStandardMaterial({map:_wallTexH, roughness:0.95, color:0x9a8878});
+  const wallMatV = new THREE.MeshStandardMaterial({map:_wallTexV, roughness:0.95, color:0x9a8878});
+  [[0,-TOWN_BOUND,TOWN_BOUND*2,1,'H'],[0,TOWN_BOUND,TOWN_BOUND*2,1,'H'],
+   [-TOWN_BOUND,0,1,TOWN_BOUND*2,'V'],[TOWN_BOUND,0,1,TOWN_BOUND*2,'V']].forEach(([x,z,w,d,dir])=>{
+    const m = new THREE.Mesh(new THREE.BoxGeometry(w,3,d), dir==='H'?wallMatH:wallMatV);
+    m.position.set(x,1.5,z); m.castShadow=true; m.receiveShadow=true; townGroup.add(m);
   });
 
   // 樹木點綴
@@ -1346,6 +1774,7 @@ function updateBubbles(dt){
 function startDialogue(name, lines){
   dialogue = {name, lines, idx:0};
   gameState = "dialogue";
+  playCharAnim('talk');
   $("interactPrompt").style.display="none";
   $("dlgName").textContent = name;
   $("dlgText").textContent = lines[0];
@@ -1430,7 +1859,7 @@ function buyItem(id){
 }
 function equipItem(id){
   const it = findItem(id); if(!it) return;
-  if(it.kind==="weapon"){ player.weaponId=it.id; player.weaponDmg=it.val; player.weaponName=it.name; }
+  if(it.kind==="weapon"){ player.weaponId=it.id; player.weaponDmg=it.val; player.weaponName=it.name; updatePlayerSword(); }
   else if(it.kind==="armor"){ player.armorId=it.id; player.armorDef=it.def; player.armorHp=it.hp; player.armorName=it.name; recalcStats(); }
   renderShop(); updateHUD();
 }
@@ -1455,6 +1884,7 @@ function interact(){
 // ---------- 載入城鎮 ----------
 function loadTown(){
   worldMode = "town";
+  if(_currentSwordMesh){ scene.remove(_currentSwordMesh); _currentSwordMesh=null; }
   if(levelGroup){ scene.remove(levelGroup); levelGroup=null; }
   torchLights = [];
   enemies.forEach(e=>scene.remove(e));
@@ -1621,6 +2051,8 @@ function drawMinimap(){
 // ---------- 主迴圈 ----------
 function update(dt){
   const p = player;
+  if (!p || !p.mesh) return;
+  syncSwordToHand();
   // ----- 玩家移動 -----
   let mv = new THREE.Vector3();
   if(keys.w) mv.z-=1; if(keys.s) mv.z+=1;
@@ -1631,15 +2063,23 @@ function update(dt){
     p.moveTarget=null; p.attackTarget=null;
     tryMove(p.mesh, mv.x*p.speed*dt, mv.z*p.speed*dt);
     p.mesh.rotation.y = Math.atan2(mv.x, mv.z);
+    playCharAnim('walk');
   } else if(p.attackTarget){
     const t = p.attackTarget;
-    if(t.userData.dying>0){ p.attackTarget=null; }
-    else{
+    if(t.userData.dying>0){
+      p.attackTarget=null;
+      // 強制結束 attack 動畫，切回 idle
+      const aa = charActions['attack'];
+      if(aa && currentCharAction===aa){ aa.stop(); currentCharAction=null; }
+      playCharAnim('idle');
+    } else {
       const d = p.mesh.position.distanceTo(t.position);
       const dir = t.position.clone().sub(p.mesh.position); dir.y=0; dir.normalize();
       p.mesh.rotation.y = Math.atan2(dir.x, dir.z);
-      if(d > 1.7) tryMove(p.mesh, dir.x*p.speed*dt, dir.z*p.speed*dt);
-      else playerAttack(t);
+      if(d > 1.7){
+        tryMove(p.mesh, dir.x*p.speed*dt, dir.z*p.speed*dt);
+        playCharAnim('walk');
+      } else playerAttack(t);
     }
   } else if(p.moveTarget){
     const d = p.mesh.position.distanceTo(p.moveTarget);
@@ -1648,19 +2088,47 @@ function update(dt){
       const dir = p.moveTarget.clone().sub(p.mesh.position); dir.y=0; dir.normalize();
       if(!tryMove(p.mesh, dir.x*p.speed*dt, dir.z*p.speed*dt)) p.moveTarget=null;
       p.mesh.rotation.y = Math.atan2(dir.x, dir.z);
+      playCharAnim('walk');
     }
+  } else {
+    // 靜止 → 待機
+    if(currentCharAction !== charActions['idle']) playCharAnim('idle');
   }
   p.atkCd = Math.max(0, p.atkCd-dt);
   p.fbCd = Math.max(0, p.fbCd-dt);
+
+  if (player.targetRotation !== undefined) {
+      // 處理 -PI 到 PI 的旋轉最短路徑問題
+      let diff = player.targetRotation - player.mesh.rotation.y;
+      while (diff < -Math.PI) diff += Math.PI * 2;
+      while (diff > Math.PI) diff -= Math.PI * 2;
+      
+      // 使用插值平滑轉動，數字 15 是旋轉速度，可根據手感微調
+      player.mesh.rotation.y += diff * 15 * dt; 
+      
+      // 當角度夠接近時，清除目標
+      if (Math.abs(diff) < 0.05) {
+          player.targetRotation = undefined;
+      }
+  }
+
+  // 城鎮模式：Raycaster 偵測地面高度，讓角色貼合 GLB 模型表面
+  if(worldMode === "town"){
+    const rayOrigin = p.mesh.position.clone();
+    rayOrigin.y += 5;  // 從角色上方往下打
+    const raycaster = new THREE.Raycaster(rayOrigin, new THREE.Vector3(0,-1,0), 0, 12);
+    const hits = raycaster.intersectObjects(townGroup.children, true);
+    if(hits.length > 0){
+      const groundY = hits[0].point.y;
+      p.mesh.position.y += (groundY - p.mesh.position.y) * 0.25;  // 平滑貼合
+    } else {
+      p.mesh.position.y += (0 - p.mesh.position.y) * 0.25;
+    }
+  }
   p.mp = Math.min(p.maxMp, p.mp + 2.2*dt);
   $("fireballBtn").classList.toggle("cooldown", p.fbCd>0 || p.mp<10);
 
-  // 揮劍動畫
-  if(p.swing>0){
-    p.swing = Math.max(0, p.swing-dt*3.2);
-    const arm = p.mesh.userData.swordArm;
-    arm.rotation.x = -Math.sin(p.swing*Math.PI)*2.0;
-  }
+  // 揮劍動畫：已由 GLB attack clip 全權處理，此處不再操作骨架
 
   // ----- 互動偵測(每幀重置) -----
   nearInteractable = null;
@@ -1804,9 +2272,11 @@ function update(dt){
   });
 
   // ----- 攝影機 -----
-  const camTarget = p.mesh.position.clone().add(new THREE.Vector3(0,13.5,9.5));
-  camera.position.lerp(camTarget, 1-Math.pow(0.001,dt));
-  camera.lookAt(p.mesh.position.x, 0.5, p.mesh.position.z);
+  if (p && p.mesh) {
+    const camTarget = p.mesh.position.clone().add(new THREE.Vector3(0, 13.5, 9.5));
+    camera.position.lerp(camTarget, 1 - Math.pow(0.001, dt));
+    camera.lookAt(p.mesh.position.x, 0.5, p.mesh.position.z);
+  }
 
   if(worldMode==="dungeon") drawMinimap();
 }
@@ -1815,6 +2285,7 @@ let mmFrame=0;
 function loop(){
   requestAnimationFrame(loop);
   const dt = Math.min(clock.getDelta(), 0.05);
+  if(charMixer) charMixer.update(dt);
   if(gameState==="play") update(dt);
   updateBubbles(dt);
   renderer.render(scene, camera);
