@@ -365,7 +365,7 @@
       <div class="w-28 sm:w-36 h-1.5 bg-stone-950 rounded-full overflow-hidden border border-stone-700/80">
         <div id="xpBarFill" class="h-full bg-gradient-to-r from-amber-600 via-yellow-500 to-amber-300 transition-all duration-200" style="width: 0%;"></div>
       </div>
-      <div class="grid grid-cols-2 gap-1.5">
+      <div class="grid grid-cols-3 gap-1.5">
         <button id="btnHpPot" type="button" class="gothic-btn w-13 sm:w-16 py-1.5 px-2 rounded-xl flex flex-col items-center justify-center relative">
           <span class="text-base sm:text-lg leading-none">🧪</span>
           <span class="text-[10px] font-bold mt-0.5">生命 (1)</span>
@@ -375,6 +375,11 @@
           <span class="text-base sm:text-lg leading-none">⚗️</span>
           <span class="text-[10px] font-bold mt-0.5">法力 (2)</span>
           <span id="mpPotCountBadge" class="absolute top-0.5 right-1 text-[9px] font-black text-sky-300">x1</span>
+        </button>
+        <button id="btnTownPortal" type="button" class="gothic-btn w-13 sm:w-16 py-1.5 px-2 rounded-xl flex flex-col items-center justify-center relative border-sky-400/70">
+          <span class="text-base sm:text-lg leading-none">🌀</span>
+          <span class="text-[10px] font-bold mt-0.5 text-sky-200">回城 (T)</span>
+          <span id="townPortalBadge" class="text-[8px] text-sky-300 leading-none">傳送門</span>
         </button>
       </div>
     </div>
@@ -837,7 +842,7 @@
         title: '星穹秘法師 (純遠程法師)',
         hpMult: 0.75, atkMult: 1.0, defMult: 0.75,
         basicType: 'arcane_bolt', basicMult: 0.425, basicName: '小型秘法球', basicIcon: '🔹',
-        skillType: 'lightning_orb', skillMult: 1.15 * 1.30, skillMp: 14, skillName: '閃電球', skillIcon: '⚡',
+        skillType: 'lightning_orb', skillMult: 1.15 * 1.30, skillMp: 7, skillName: '閃電球', skillIcon: '⚡',
         desc: '秘法師：普攻小型藍秘法球(傷害減半、射程為揮砍2倍) · 耗魔技秘法閃電球(比火球高30%)'
       },
       ranger_f: {
@@ -1324,6 +1329,9 @@
       activeHpTier: 1,
       activeMpTier: 1,
       bag: [],
+      clearedFloors: new Set(),
+      deepestFloor: 1,
+      townPortalFloor: 0,
       speed: 6.5,
       atkCd: 0,
       fbCd: 0,
@@ -3537,6 +3545,41 @@
         prompt: '💧 飲用「西岸古井清泉」（全滿恢復 HP / MP）'
       });
 
+      // Item #3 (1.2): If player used Town Portal from deep dungeon, spawn Blue Return Portal in Village Square!
+      if (player.townPortalFloor && player.townPortalFloor >= 1) {
+        const tpX = 11.2, tpZ = 3.8;
+        const tpY = getVillageWalkableHeight(tpX, tpZ);
+        const tpGroup = new THREE.Group();
+        tpGroup.position.set(tpX, tpY, tpZ);
+        const ring = new THREE.Mesh(
+          new THREE.TorusGeometry(1.15, 0.14, 10, 24),
+          new THREE.MeshBasicMaterial({ color: 0x38bdf8 })
+        );
+        ring.position.y = 1.35;
+        const core = new THREE.Mesh(
+          new THREE.CircleGeometry(1.05, 20),
+          new THREE.MeshBasicMaterial({ color: 0x0284c7, transparent: true, opacity: 0.68, side: THREE.DoubleSide })
+        );
+        core.position.y = 1.35;
+        const tpLight = new THREE.PointLight(0x38bdf8, 2.2, 10);
+        tpLight.position.y = 1.5;
+        const tpSign = createFloatingSign(`🌀 傳送門：返回 B${player.townPortalFloor}`, '#38bdf8', '#e0f2fe');
+        tpSign.position.y = 2.95;
+        tpGroup.add(ring, core, tpLight, tpSign);
+        worldGroup.add(tpGroup);
+
+        interactables.push({
+          type: 'town_portal_return',
+          autoEnter: true,
+          targetFloor: player.townPortalFloor,
+          x: tpX,
+          z: tpZ,
+          radius: 1.85,
+          mesh: null,
+          prompt: `🌀 踏入傳送門直接返回 B${player.townPortalFloor}`
+        });
+      }
+
       // 8 Street Lamps
       [
         [6.5, 4.6], [16, -2], [20, -14], [27, 12],
@@ -3953,38 +3996,260 @@
     // =========================================================================
     let enemyProjectiles = [];
 
+    // Cache of Procedural Biome Material Pairs so every 10-floor biome has crisp, textured walls & floors!
+    const biomeMatCache = {};
+
+    function getBiomeMaterialPair(propType) {
+      if (propType === 'timber') {
+        // Item #2 (1.2): Floors 1~10 restore the exact original textured mineWallMat & mineFloorMat!
+        return {
+          wallMat: isRemasteredMode ? sharedMats.mineWallMat : sharedMats.classicWall,
+          floorMat: isRemasteredMode ? sharedMats.mineFloorMat : sharedMats.classicFloor
+        };
+      }
+      if (biomeMatCache[propType]) return biomeMatCache[propType];
+
+      // Build Procedural Wall CanvasTexture (256x256)
+      const wCv = document.createElement('canvas');
+      wCv.width = 256; wCv.height = 256;
+      const wctx = wCv.getContext('2d');
+
+      // Build Procedural Floor CanvasTexture (256x256)
+      const fCv = document.createElement('canvas');
+      fCv.width = 256; fCv.height = 256;
+      const fctx = fCv.getContext('2d');
+
+      let wallRough = 0.82, floorRough = 0.85, wallEmissive = 0x000000, wallEmissiveInt = 0.0;
+
+      if (propType === 'eerie_skulls') {
+        // 11~20層：陰森冷灰石磚牆貼圖 & 裂紋冷石地貼圖
+        wctx.fillStyle = '#141c1a'; wctx.fillRect(0, 0, 256, 256);
+        for (let r = 0; r < 8; r++) {
+          for (let c = 0; c < 4; c++) {
+            const bx = c * 64 + ((r % 2) * 32) - 16;
+            const by = r * 32;
+            const v = 28 + ((r * 17 + c * 23) % 20);
+            wctx.fillStyle = `rgb(${v - 4}, ${v + 6}, ${v + 4})`;
+            wctx.fillRect(bx + 2, by + 2, 60, 28);
+            wctx.strokeStyle = '#090d0c'; wctx.lineWidth = 3;
+            wctx.strokeRect(bx + 2, by + 2, 60, 28);
+          }
+        }
+        // Eerie dark moss & cracks on wall
+        wctx.strokeStyle = 'rgba(16, 185, 129, 0.22)'; wctx.lineWidth = 2;
+        for (let i = 0; i < 12; i++) {
+          wctx.beginPath();
+          wctx.moveTo((i * 47) % 256, (i * 31) % 256);
+          wctx.lineTo(((i * 47) % 256) + 24, ((i * 31) % 256) + 38);
+          wctx.stroke();
+        }
+
+        fctx.fillStyle = '#121816'; fctx.fillRect(0, 0, 256, 256);
+        for (let i = 0; i < 64; i++) {
+          const x = (i % 8) * 32, y = Math.floor(i / 8) * 32;
+          const v = 22 + ((i * 19) % 16);
+          fctx.fillStyle = `rgb(${v - 2}, ${v + 4}, ${v + 3})`;
+          fctx.fillRect(x + 1, y + 1, 30, 30);
+        }
+      } else if (propType === 'green_crystals' || propType === 'moss_puddles') {
+        // 21~30層 & 31~40層：自然岩石與青苔斑駁牆壁／地板貼圖
+        const isWet = propType === 'moss_puddles';
+        wctx.fillStyle = isWet ? '#13261a' : '#232924';
+        wctx.fillRect(0, 0, 256, 256);
+        // Natural craggy rock strata
+        for (let i = 0; i < 95; i++) {
+          const rx = (i * 53) % 256, ry = (i * 97) % 256;
+          const rw = 28 + (i % 36), rh = 18 + (i % 24);
+          const v = 42 + (i % 28);
+          wctx.fillStyle = `rgb(${v - 4}, ${v + 3}, ${v - 6})`;
+          wctx.beginPath();
+          wctx.roundRect(rx, ry, rw, rh, 6);
+          wctx.fill();
+          wctx.strokeStyle = '#111713'; wctx.lineWidth = 2; wctx.stroke();
+        }
+        // Lush green moss patches on rock wall
+        for (let m = 0; m < (isWet ? 70 : 42); m++) {
+          const mx = (m * 71) % 256, my = (m * 113) % 256;
+          wctx.fillStyle = isWet ? 'rgba(34, 197, 94, 0.35)' : 'rgba(74, 222, 128, 0.28)';
+          wctx.beginPath();
+          wctx.arc(mx, my, 8 + (m % 14), 0, Math.PI * 2);
+          wctx.fill();
+        }
+
+        fctx.fillStyle = isWet ? '#112217' : '#1e241e';
+        fctx.fillRect(0, 0, 256, 256);
+        for (let i = 0; i < 360; i++) {
+          const x = (i * 73) % 256, y = (i * 139) % 256;
+          const isMoss = i % (isWet ? 2 : 3) === 0;
+          const v = 34 + (i % 24);
+          fctx.fillStyle = isMoss ? `rgb(${24 + (i % 20)}, ${62 + (i % 30)}, ${32 + (i % 16)})` : `rgb(${v}, ${v + 2}, ${v - 3})`;
+          fctx.beginPath();
+          fctx.arc(x, y, 4 + (i % 9), 0, Math.PI * 2);
+          fctx.fill();
+        }
+        if (isWet) floorRough = 0.38;
+      } else if (propType === 'bone_feast') {
+        // 41~50層：血跡斑駁石牆與獸骨食堂地板貼圖
+        wctx.fillStyle = '#2b1616'; wctx.fillRect(0, 0, 256, 256);
+        for (let r = 0; r < 6; r++) {
+          for (let c = 0; c < 4; c++) {
+            wctx.fillStyle = `rgb(${52 + (r * 7) % 20}, ${26 + (c * 5) % 12}, ${24})`;
+            wctx.fillRect(c * 64 + 2, r * 42 + 2, 60, 38);
+          }
+        }
+        fctx.fillStyle = '#241212'; fctx.fillRect(0, 0, 256, 256);
+        for (let i = 0; i < 220; i++) {
+          fctx.fillStyle = i % 5 === 0 ? 'rgba(153, 27, 27, 0.45)' : '#361c1c';
+          fctx.fillRect((i * 59) % 256, (i * 97) % 256, 12, 12);
+        }
+      } else if (propType === 'cocoons') {
+        // 51~60層：紫黑蛛網巢穴貼圖
+        wctx.fillStyle = '#1f112e'; wctx.fillRect(0, 0, 256, 256);
+        wctx.strokeStyle = 'rgba(216, 180, 254, 0.28)'; wctx.lineWidth = 1.5;
+        for (let i = 0; i < 28; i++) {
+          wctx.beginPath();
+          wctx.moveTo((i * 37) % 256, 0);
+          wctx.lineTo(256 - ((i * 53) % 256), 256);
+          wctx.stroke();
+        }
+        fctx.fillStyle = '#180d24'; fctx.fillRect(0, 0, 256, 256);
+        for (let i = 0; i < 180; i++) {
+          fctx.fillStyle = i % 4 === 0 ? '#3b1d5e' : '#241436';
+          fctx.beginPath();
+          fctx.arc((i * 67) % 256, (i * 109) % 256, 6 + (i % 8), 0, Math.PI * 2);
+          fctx.fill();
+        }
+      } else if (propType === 'smoke_volcano' || propType === 'flame_cracks') {
+        // 61~70層 & 71~80層：火山玄武岩與赤焰裂縫貼圖
+        const hasFlames = propType === 'flame_cracks';
+        wctx.fillStyle = '#181311'; wctx.fillRect(0, 0, 256, 256);
+        for (let i = 0; i < 90; i++) {
+          const v = 24 + (i % 18);
+          wctx.fillStyle = `rgb(${v + 4}, ${v}, ${v - 2})`;
+          wctx.fillRect((i * 43) % 256, (i * 89) % 256, 28, 22);
+        }
+        if (hasFlames) {
+          wctx.strokeStyle = '#ff4500'; wctx.lineWidth = 4;
+          for (let k = 0; k < 10; k++) {
+            wctx.beginPath();
+            wctx.moveTo((k * 29) % 256, (k * 53) % 256);
+            wctx.lineTo(((k * 29) % 256) + 35, ((k * 53) % 256) + 45);
+            wctx.stroke();
+          }
+          wallEmissive = 0x7f1d1d; wallEmissiveInt = 0.45;
+        }
+        fctx.fillStyle = '#14110f'; fctx.fillRect(0, 0, 256, 256);
+        for (let i = 0; i < 260; i++) {
+          const v = 20 + (i % 16);
+          fctx.fillStyle = `rgb(${v + 3}, ${v}, ${v})`;
+          fctx.fillRect((i * 61) % 256, (i * 103) % 256, 10, 10);
+        }
+      } else {
+        // 81~90層 & 91~100層：流動熾熱熔岩牆貼圖 & 火山岩步道貼圖
+        const isHell = propType === 'lava_hell';
+        wctx.fillStyle = '#7f1d1d'; wctx.fillRect(0, 0, 256, 256);
+        for (let i = 0; i < 120; i++) {
+          wctx.fillStyle = i % 3 === 0 ? '#facc15' : i % 2 === 0 ? '#ea580c' : '#991b1b';
+          wctx.beginPath();
+          wctx.arc((i * 47) % 256, (i * 83) % 256, 8 + (i % 14), 0, Math.PI * 2);
+          wctx.fill();
+        }
+        wallEmissive = 0xc2410c; wallEmissiveInt = 0.75;
+
+        fctx.fillStyle = '#1c1917'; fctx.fillRect(0, 0, 256, 256);
+        for (let i = 0; i < 200; i++) {
+          fctx.fillStyle = (isHell && i % 7 === 0) ? '#dc2626' : '#292524';
+          fctx.fillRect((i * 53) % 256, (i * 97) % 256, 14, 14);
+        }
+      }
+
+      const wallTex = new THREE.CanvasTexture(wCv);
+      wallTex.wrapS = wallTex.wrapT = THREE.RepeatWrapping;
+      const floorTex = new THREE.CanvasTexture(fCv);
+      floorTex.wrapS = floorTex.wrapT = THREE.RepeatWrapping;
+
+      const pair = {
+        wallMat: new THREE.MeshStandardMaterial({
+          map: wallTex,
+          bumpMap: wallTex,
+          bumpScale: 0.08,
+          roughness: wallRough,
+          emissive: wallEmissive,
+          emissiveIntensity: wallEmissiveInt
+        }),
+        floorMat: new THREE.MeshStandardMaterial({
+          map: floorTex,
+          bumpMap: floorTex,
+          bumpScale: 0.05,
+          roughness: floorRough
+        })
+      };
+      biomeMatCache[propType] = pair;
+      return pair;
+    }
+
     function getBiomeVisualConfig(fl) {
       if (fl <= 10) {
-        // 1~10: Original Mine
-        return { bg: 0x090706, fog: 0x0d0a08, fogDens: 0.038, wallCol: 0x3b312b, floorCol: 0x26211e, wallEmissive: 0x000000, propType: 'timber' };
+        return { bg: 0x090706, fog: 0x0d0a08, fogDens: 0.036, propType: 'timber' };
       } else if (fl <= 20) {
-        // 11~20: Eerie Abandoned Mine (陰森的廢棄礦坑)
-        return { bg: 0x050908, fog: 0x07120e, fogDens: 0.046, wallCol: 0x222926, floorCol: 0x161b19, wallEmissive: 0x000000, propType: 'eerie_skulls' };
+        return { bg: 0x050908, fog: 0x07120e, fogDens: 0.042, propType: 'eerie_skulls' };
       } else if (fl <= 30) {
-        // 21~30: Green Crystal Wall Mine (牆上零散插著綠水晶的礦洞)
-        return { bg: 0x04120c, fog: 0x061c13, fogDens: 0.038, wallCol: 0x24332c, floorCol: 0x1a2420, wallEmissive: 0x000000, propType: 'green_crystals' };
+        return { bg: 0x04120c, fog: 0x061c13, fogDens: 0.036, propType: 'green_crystals' };
       } else if (fl <= 40) {
-        // 31~40: Moss, Green Crystals & Underground Puddles (長著苔癬與綠水晶及地下積水的礦洞)
-        return { bg: 0x051710, fog: 0x072218, fogDens: 0.040, wallCol: 0x1e3a24, floorCol: 0x15281a, wallEmissive: 0x042f1e, propType: 'moss_puddles' };
+        return { bg: 0x051710, fog: 0x072218, fogDens: 0.038, propType: 'moss_puddles' };
       } else if (fl <= 50) {
-        // 41~50: Bone-Piled Monster Cafeteria (堆滿動物屍骨的怪物食堂)
-        return { bg: 0x140808, fog: 0x1c0b0b, fogDens: 0.040, wallCol: 0x3b2323, floorCol: 0x291616, wallEmissive: 0x000000, propType: 'bone_feast' };
+        return { bg: 0x140808, fog: 0x1c0b0b, fogDens: 0.038, propType: 'bone_feast' };
       } else if (fl <= 60) {
-        // 51~60: Monster Cocoon Lair (長滿各種怪物繭的怪物巢穴)
-        return { bg: 0x11071a, fog: 0x190a26, fogDens: 0.042, wallCol: 0x2b193d, floorCol: 0x1d1128, wallEmissive: 0x1e0936, propType: 'cocoons' };
+        return { bg: 0x11071a, fog: 0x190a26, fogDens: 0.040, propType: 'cocoons' };
       } else if (fl <= 70) {
-        // 61~70: Smoking Volcanic Rock Cave (冒著煙的火山岩洞穴)
-        return { bg: 0x120d0b, fog: 0x1f1614, fogDens: 0.045, wallCol: 0x1c1917, floorCol: 0x141210, wallEmissive: 0x000000, propType: 'smoke_volcano' };
+        return { bg: 0x120d0b, fog: 0x1f1614, fogDens: 0.042, propType: 'smoke_volcano' };
       } else if (fl <= 80) {
-        // 71~80: Red Flame Fissure Cave (牆上有紅色火焰裂縫的岩洞)
-        return { bg: 0x1a0805, fog: 0x260c07, fogDens: 0.040, wallCol: 0x241411, floorCol: 0x170f0d, wallEmissive: 0x450a0a, propType: 'flame_cracks' };
+        return { bg: 0x1a0805, fog: 0x260c07, fogDens: 0.038, propType: 'flame_cracks' };
       } else if (fl <= 90) {
-        // 81~90: Molten Lava Walls & Walkable Volcanic Rock Path (熔岩構成的牆壁，只有道路是可以行走的火山岩)
-        return { bg: 0x290902, fog: 0x3b0d04, fogDens: 0.036, wallCol: 0xea580c, floorCol: 0x1c1917, wallEmissive: 0x9a3412, propType: 'lava_walls' };
+        return { bg: 0x290902, fog: 0x3b0d04, fogDens: 0.034, propType: 'lava_walls' };
       } else {
-        // 91~100: Lava Hell Spectacle (熔岩地獄的奇景)
-        return { bg: 0x380606, fog: 0x450a0a, fogDens: 0.034, wallCol: 0xdc2626, floorCol: 0x271515, wallEmissive: 0xb91c1c, propType: 'lava_hell' };
+        return { bg: 0x380606, fog: 0x450a0a, fogDens: 0.032, propType: 'lava_hell' };
       }
+    }
+
+    function isFloorCleared(fl) {
+      if (fl <= 0) return true;
+      return player.clearedFloors.has(fl) || fl < player.deepestFloor;
+    }
+
+    function revealEntireFloor() {
+      for (let x = 0; x < MAP; x++) {
+        for (let z = 0; z < MAP; z++) {
+          explored[x][z] = true;
+        }
+      }
+    }
+
+    function isDownStairsExplored() {
+      if (!currentDownStairsPos) return false;
+      if (isFloorCleared(currentFloor)) return true;
+      const sgx = Math.round(currentDownStairsPos.x / TILE + MAP / 2);
+      const sgz = Math.round(currentDownStairsPos.z / TILE + MAP / 2);
+      if (sgx >= 0 && sgx < MAP && sgz >= 0 && sgz < MAP) {
+        return !!explored[sgx][sgz];
+      }
+      return false;
+    }
+
+    // Build a clean, simple low-poly Green Crystal Cluster for Floors 21~40 (Item #3 of 1.2)
+    function createSimpleGreenCrystalCluster(mat, scale = 1.0) {
+      const cg = new THREE.Group();
+      const mainShard = new THREE.Mesh(new THREE.CylinderGeometry(0.02, 0.18, 0.95, 6), mat);
+      mainShard.position.y = 0.45;
+      const sideShard1 = new THREE.Mesh(new THREE.CylinderGeometry(0.015, 0.13, 0.65, 6), mat);
+      sideShard1.position.set(0.14, 0.28, 0.06);
+      sideShard1.rotation.z = -0.38;
+      const sideShard2 = new THREE.Mesh(new THREE.CylinderGeometry(0.015, 0.11, 0.55, 6), mat);
+      sideShard2.position.set(-0.12, 0.24, -0.05);
+      sideShard2.rotation.z = 0.42;
+      cg.add(mainShard, sideShard1, sideShard2);
+      cg.scale.setScalar(scale);
+      return cg;
     }
 
     function loadMineFloor(floorNum, spawnAtDownStairs = false) {
@@ -3993,16 +4258,22 @@
       portalCooldown = 1.35;
       currentFloor = floorNum;
 
-      // Item #7: Larger, truly randomized maze dimensions scaling with floorNum
+      // Mark previous floors as cleared when advancing deeper!
+      if (floorNum > player.deepestFloor) {
+        for (let f = 1; f < floorNum; f++) player.clearedFloors.add(f);
+        player.deepestFloor = floorNum;
+        saveHeroProfileToStorage();
+      }
+
       MAP = Math.min(72, 38 + Math.floor(floorNum * 0.34));
       const biome = getBiomeVisualConfig(floorNum);
       scene.background.setHex(biome.bg);
       scene.fog.color.setHex(biome.fog);
       scene.fog.density = biome.fogDens;
       dirLight.color.setHex(floorNum >= 71 ? 0xff6b35 : floorNum >= 21 && floorNum <= 40 ? 0x6ee7b7 : 0xffb46b);
-      dirLight.intensity = floorNum >= 81 ? 0.85 : 0.45;
+      dirLight.intensity = floorNum >= 81 ? 0.85 : 0.52;
       hemiLight.color.setHex(floorNum >= 71 ? 0x7f1d1d : 0x475569);
-      hemiLight.intensity = 0.6;
+      hemiLight.intensity = 0.65;
 
       document.getElementById('locationLabel').textContent = getFloorName(floorNum);
       document.getElementById('bossBarContainer').classList.add('hidden');
@@ -4015,7 +4286,6 @@
       grid = Array.from({ length: MAP }, () => Array(MAP).fill(1));
       explored = Array.from({ length: MAP }, () => Array(MAP).fill(false));
 
-      // Item #7: Generate Randomized Multi-Room & Winding Branch Maze!
       const targetRooms = Math.min(18, 8 + Math.floor(floorNum / 7));
       const rooms = [];
       let attempts = 0;
@@ -4045,7 +4315,6 @@
         rooms.push({ cx, cz, halfW, halfH });
       }
 
-      // Sort or pick start room & furthest exit room so player must genuinely explore the maze!
       let maxPairDist = -1;
       let bestEndIdx = rooms.length - 1;
       for (let i = 1; i < rooms.length; i++) {
@@ -4061,7 +4330,6 @@
         rooms[bestEndIdx] = tmpR;
       }
 
-      // Carve randomized winding corridors between rooms + extra false-branch loops
       const corridorTiles = [];
       function carveCorridor(x1, z1, x2, z2) {
         let x = x1, z = z1;
@@ -4086,7 +4354,6 @@
       for (let i = 1; i < rooms.length; i++) {
         carveCorridor(rooms[i - 1].cx, rooms[i - 1].cz, rooms[i].cx, rooms[i].cz);
       }
-      // Extra cross-connections and dead-end branches to make maze complex
       for (let b = 0; b < 3; b++) {
         const rA = rooms[Math.floor(Math.random() * rooms.length)];
         const bx = Math.max(4, Math.min(MAP - 5, rA.cx + (Math.random() < 0.5 ? -8 : 8)));
@@ -4094,23 +4361,15 @@
         carveCorridor(rA.cx, rA.cz, bx, bz);
       }
 
-      // Build Biome-Specific Floor & Wall Materials (Items #13, #14, #15)
-      const floorMat = new THREE.MeshStandardMaterial({
-        color: biome.floorCol,
-        roughness: biome.propType === 'moss_puddles' ? 0.35 : 0.88
-      });
-      const wallMat = new THREE.MeshStandardMaterial({
-        color: biome.wallCol,
-        emissive: biome.wallEmissive,
-        emissiveIntensity: biome.propType === 'lava_walls' || biome.propType === 'lava_hell' ? 0.78 : 0.35,
-        roughness: 0.75
-      });
+      // Use Textured Wall & Floor Materials for this Biome (Items #1, #2, #3 of 1.2)
+      const { wallMat, floorMat } = getBiomeMaterialPair(biome.propType);
       const floorGeo = new THREE.BoxGeometry(TILE, 0.2, TILE);
       const wallGeo = new THREE.BoxGeometry(TILE, 3.4, TILE);
 
-      const greenCrystalMat = new THREE.MeshStandardMaterial({ color: 0x10b981, emissive: 0x059669, emissiveIntensity: 0.9, roughness: 0.2 });
+      const greenCrystalMat = new THREE.MeshStandardMaterial({ color: 0x10b981, emissive: 0x059669, emissiveIntensity: 0.85, roughness: 0.18 });
       const puddleMat = new THREE.MeshStandardMaterial({ color: 0x0284c7, emissive: 0x0369a1, emissiveIntensity: 0.3, roughness: 0.08, metalness: 0.7, transparent: true, opacity: 0.78 });
       const boneMat = new THREE.MeshStandardMaterial({ color: 0xe7e5e4, roughness: 0.65 });
+      const eyeSocketMat = new THREE.MeshBasicMaterial({ color: 0x09090b });
       const cocoonMat = new THREE.MeshStandardMaterial({ color: 0xa855f7, emissive: 0x6b21a8, emissiveIntensity: 0.65, roughness: 0.4, transparent: true, opacity: 0.85 });
       const flameCrackMat = new THREE.MeshBasicMaterial({ color: 0xff4500 });
 
@@ -4124,20 +4383,46 @@
             tileMesh.receiveShadow = true;
             worldGroup.add(tileMesh);
 
-            // Biome Floor Decorations (Items #13, #14, #15)
-            const hash = (gx * 37 + gz * 17) % 29;
-            if (biome.propType === 'moss_puddles' && hash === 0) {
+            const hash = (gx * 37 + gz * 17) % 23;
+            if (biome.propType === 'eerie_skulls' && hash <= 5) {
+              // Item #2 (1.2): Floors 11~20 have LOTS of skulls & bones scattered on the floor!
+              const skullG = new THREE.Group();
+              skullG.position.set(wx + ((gx % 3) - 1) * 0.45, 0, wz + ((gz % 3) - 1) * 0.45);
+              const cranium = new THREE.Mesh(new THREE.SphereGeometry(0.19, 8, 8), boneMat);
+              cranium.position.y = 0.18;
+              const eyeL = new THREE.Mesh(new THREE.SphereGeometry(0.04, 5, 5), eyeSocketMat);
+              eyeL.position.set(-0.06, 0.19, 0.16);
+              const eyeR = eyeL.clone();
+              eyeR.position.x = 0.06;
+              const bone1 = new THREE.Mesh(new THREE.CylinderGeometry(0.035, 0.035, 0.75, 6), boneMat);
+              bone1.rotation.set(Math.PI / 2, 0, 0.65);
+              bone1.position.set(0.22, 0.04, -0.15);
+              skullG.add(cranium, eyeL, eyeR, bone1);
+              if (hash <= 2) {
+                const skull2 = cranium.clone();
+                skull2.position.set(-0.28, 0.16, 0.22);
+                skullG.add(skull2);
+              }
+              skullG.rotation.y = (gx + gz) * 0.9;
+              worldGroup.add(skullG);
+            } else if ((biome.propType === 'green_crystals' || biome.propType === 'moss_puddles') && hash <= 3) {
+              // Item #3 (1.2): Floors 21~40 sprout clean, simple Green Crystals on the ground!
+              const crysCluster = createSimpleGreenCrystalCluster(greenCrystalMat, 0.85 + (hash % 3) * 0.2);
+              crysCluster.position.set(wx + ((gx % 2 === 0) ? 0.65 : -0.65), 0, wz + ((gz % 2 === 0) ? -0.65 : 0.65));
+              crysCluster.rotation.y = (gx * 1.3 + gz * 0.7);
+              worldGroup.add(crysCluster);
+            } else if (biome.propType === 'moss_puddles' && hash === 4) {
               const puddle = new THREE.Mesh(new THREE.CylinderGeometry(0.95, 1.05, 0.03, 10), puddleMat);
               puddle.position.set(wx, 0.02, wz);
               worldGroup.add(puddle);
-            } else if ((biome.propType === 'bone_feast' || biome.propType === 'eerie_skulls') && hash <= 1) {
-              const skull = new THREE.Mesh(new THREE.SphereGeometry(0.18, 7, 7), boneMat);
-              skull.position.set(wx + 0.35, 0.16, wz - 0.25);
-              const rib = new THREE.Mesh(new THREE.CylinderGeometry(0.04, 0.04, 0.85, 6), boneMat);
+            } else if (biome.propType === 'bone_feast' && hash <= 4) {
+              const skull = new THREE.Mesh(new THREE.SphereGeometry(0.21, 7, 7), boneMat);
+              skull.position.set(wx + 0.35, 0.18, wz - 0.25);
+              const rib = new THREE.Mesh(new THREE.CylinderGeometry(0.045, 0.045, 0.95, 6), boneMat);
               rib.rotation.z = 1.3;
               rib.position.set(wx - 0.2, 0.08, wz + 0.2);
               worldGroup.add(skull, rib);
-            } else if (biome.propType === 'cocoons' && hash === 0) {
+            } else if (biome.propType === 'cocoons' && hash <= 1) {
               const cocoon = new THREE.Mesh(new THREE.SphereGeometry(0.42, 8, 8), cocoonMat);
               cocoon.scale.set(0.8, 1.45, 0.8);
               cocoon.position.set(wx + 0.6, 0.55, wz - 0.6);
@@ -4148,7 +4433,7 @@
               const smk = new THREE.Mesh(new THREE.SphereGeometry(0.32, 6, 6), new THREE.MeshBasicMaterial({ color: 0x78716c, transparent: true, opacity: 0.45 }));
               smk.position.set(wx, 1.1, wz);
               worldGroup.add(vent, smk);
-            } else if (biome.propType === 'lava_hell' && hash === 0) {
+            } else if (biome.propType === 'lava_hell' && hash <= 1) {
               const lavaPool = new THREE.Mesh(new THREE.CylinderGeometry(0.85, 0.9, 0.04, 10), flameCrackMat);
               lavaPool.position.set(wx, 0.02, wz);
               worldGroup.add(lavaPool);
@@ -4168,20 +4453,23 @@
               wallMesh.receiveShadow = true;
               worldGroup.add(wallMesh);
 
-              // Biome Wall Decorations (Green Crystals, Flame Cracks, Timber Posts)
-              if ((biome.propType === 'green_crystals' || biome.propType === 'moss_puddles') && (gx + gz) % 4 === 0) {
-                const crys = new THREE.Mesh(new THREE.ConeGeometry(0.24, 0.95, 5), greenCrystalMat);
-                crys.position.set(wx, 1.5, wz);
-                crys.rotation.set(0.65, gx, 0.45);
-                worldGroup.add(crys);
+              if (biome.propType === 'timber' && isRemasteredMode && (gx + gz) % 3 === 0) {
+                // Item #2 (1.2): Floors 1~10 restore the wooden support posts & iron bands!
+                const post = new THREE.Mesh(new THREE.BoxGeometry(TILE + 0.14, 3.45, 0.28), sharedMats.woodWarm);
+                post.position.set(wx, 1.72, wz);
+                const ironBand = new THREE.Mesh(new THREE.BoxGeometry(TILE + 0.18, 0.32, 0.32), sharedMats.darkIron);
+                ironBand.position.set(wx, 3.05, wz);
+                worldGroup.add(post, ironBand);
+              } else if ((biome.propType === 'green_crystals' || biome.propType === 'moss_puddles') && (gx + gz) % 3 === 0) {
+                // Item #3 (1.2): Simple Green Crystals jutting out of the rock/moss walls!
+                const wallShard = new THREE.Mesh(new THREE.CylinderGeometry(0.02, 0.20, 1.15, 6), greenCrystalMat);
+                wallShard.position.set(wx, 1.35 + (gx % 2) * 0.5, wz);
+                wallShard.rotation.set(0.85, gx * 1.1, 0.65);
+                worldGroup.add(wallShard);
               } else if (biome.propType === 'flame_cracks' && (gx + gz) % 3 === 0) {
                 const crack = new THREE.Mesh(new THREE.BoxGeometry(TILE + 0.08, 0.14, TILE + 0.08), flameCrackMat);
                 crack.position.set(wx, 1.2 + (gx % 3) * 0.5, wz);
                 worldGroup.add(crack);
-              } else if (biome.propType === 'timber' && (gx + gz) % 3 === 0) {
-                const post = new THREE.Mesh(new THREE.BoxGeometry(TILE + 0.14, 3.45, 0.28), sharedMats.woodWarm);
-                post.position.set(wx, 1.72, wz);
-                worldGroup.add(post);
               }
             }
           }
@@ -4194,22 +4482,18 @@
       const startPos = toWorld(startRoom.cx, startRoom.cz);
       const endPos = toWorld(endRoom.cx, endRoom.cz);
 
-      // 1. Upward Staircase at Start Room
       buildStaircaseUp(startPos.x, startPos.z - 2.2, floorNum);
       createHangingLantern(startPos.x - 2.5, 2.7, startPos.z);
 
-      // 2. Downward Staircase at Furthest Room (B1..B99)
       if (floorNum < MAX_FLOOR) {
         buildStaircaseDown(endPos.x, endPos.z - 1.8, floorNum + 1);
         createHangingLantern(endPos.x - 2.6, 2.7, endPos.z - 2.0);
       }
 
-      // 3. Item #4: Monster Base HP +300% (4.0x) on B1, and +10% per floor after!
       const floorHpMult = 4.0 * Math.pow(1.10, floorNum - 1);
       const floorDmgMult = 1.0 + (floorNum - 1) * 0.12;
       const pool = getMonsterPoolForFloor(floorNum);
 
-      // Item #8 & #12: Bosses every 10 floors; on Floor 100 spawn BOTH Fire Dragon & Hell Overlord!
       if (floorNum === 100) {
         spawnEnemy('fire_dragon', endPos.x - 3.2, endPos.z + 1.5, floorHpMult * 2.2, floorDmgMult * 2.0);
         spawnEnemy('hell_overlord', endPos.x + 2.8, endPos.z + 2.5, floorHpMult * 2.8, floorDmgMult * 2.2);
@@ -4218,7 +4502,6 @@
         spawnEnemy('boss', endPos.x, endPos.z + 2.2, floorHpMult * bossAppearanceIdx, floorDmgMult * bossAppearanceIdx);
       }
 
-      // 4. Item #8: High Monster Density inside Rooms + Treasure Chests (Primary Gold Source!)
       const baseRoomMonsters = 2 + Math.min(5, Math.floor(floorNum / 14));
       for (let i = 1; i < rooms.length; i++) {
         const rm = rooms[i];
@@ -4230,10 +4513,11 @@
           const chosen = pool[(i + m) % pool.length];
           const ox = (Math.random() - 0.5) * 4.2;
           const oz = (Math.random() - 0.5) * 4.2;
-          spawnEnemy(chosen, pos.x + ox, pos.z + oz, floorHpMult, floorDmgMult);
+          const sx = pos.x + ox, sz = pos.z + oz;
+          if (Math.hypot(sx - startPos.x, sz - startPos.z) < 22.0) continue;
+          spawnEnemy(chosen, sx, sz, floorHpMult, floorDmgMult);
         }
 
-        // Spawn Chests in rooms so players can earn Gold from Chests (Item #6)
         if (i % 2 === 1 || i === rooms.length - 1) {
           const cxPos = pos.x + 2.0, czPos = pos.z - 1.8;
           const chestGroup = new THREE.Group();
@@ -4270,21 +4554,19 @@
         }
       }
 
-      // 5. Item #8: Spawn Monsters inside Corridors as well (走道間也可以有怪物，隨深入密度越高)!
       const corridorMonsterCount = 5 + Math.min(22, Math.floor(floorNum * 0.35));
       if (corridorTiles.length > 0) {
         const step = Math.max(1, Math.floor(corridorTiles.length / corridorMonsterCount));
         for (let cIdx = 0; cIdx < corridorTiles.length && cIdx / step < corridorMonsterCount; cIdx += step) {
           const ct = corridorTiles[cIdx];
           const cw = toWorld(ct.gx, ct.gz);
-          if (Math.hypot(cw.x - startPos.x, cw.z - startPos.z) > 6.5) {
+          if (Math.hypot(cw.x - startPos.x, cw.z - startPos.z) >= 22.0) {
             const chosen = pool[cIdx % pool.length];
             spawnEnemy(chosen, cw.x, cw.z, floorHpMult, floorDmgMult);
           }
         }
       }
 
-      // 6. Active Quest Objectives on this Floor
       HOUSE_QUESTS.forEach((q) => {
         if (q.status === 'active' && q.floor === floorNum) {
           const midRoom = rooms[Math.min(rooms.length - 2, 2)];
@@ -4312,6 +4594,11 @@
         }
       });
 
+      // Item #4 (1.2): If this floor has already been cleared/passed, open the entire fog-of-war immediately!
+      if (isFloorCleared(floorNum)) {
+        revealEntireFloor();
+      }
+
       if (spawnAtDownStairs && currentDownStairsPos) {
         player.x = currentDownStairsPos.x;
         player.z = currentDownStairsPos.z + 2.4;
@@ -4321,15 +4608,18 @@
       }
       player.y = 0;
       buildHeroMesh();
-      showToast(`🪜 進入 B${floorNum}（${getBiomeTitle(floorNum)}）！迷宮共 ${rooms.length} 個區域`);
+      updateHudUI();
+      showToast(`🪜 進入 B${floorNum}（${getBiomeTitle(floorNum)}）！${isFloorCleared(floorNum) ? '本層已通關，迷霧已全開' : '探索迷霧尋找下一層樓梯'}`);
     }
 
     function spawnEnemy(typeKey, x, z, hpMult, dmgMult = 1.0, eliteQuest = null) {
       const base = ENEMY_TYPES[typeKey] || ENEMY_TYPES.rat;
       const isBoss = !!base.isBoss || typeKey === 'boss';
       const extraHpFactor = base.hpBonusMult || 1.0; // Item #10: Giants have 300% HP
-      const maxHp = Math.max(10, Math.round(base.hp * hpMult * extraHpFactor));
-      const dmg = Math.max(2, Math.round(base.dmg * dmgMult));
+      // Item #4 (1.2): Regular monsters attack +25% (0.25 * 1.25 = 0.3125), Boss base damage +75% (0.25 * 1.75 = 0.4375)!
+      const maxHp = Math.max(5, Math.round(base.hp * hpMult * extraHpFactor * 0.5));
+      const dmgScale = isBoss ? (0.25 * 1.75) : (0.25 * 1.25);
+      const dmg = Math.max(1, Math.round(base.dmg * dmgMult * dmgScale));
       const xp = Math.round(base.xp * (1 + (currentFloor - 1) * 0.15));
 
       // Item #4 & #9: Boss speed equals player.speed (6.5); after Floor 10, regular monsters speed up!
@@ -4372,7 +4662,8 @@
         revivesIn15s: !!(base.revivesIn15s && currentFloor >= 40),
         downedTimer: 0,
         isDownedCorpse: false,
-        defReduction: base.defReduction || 0,
+        // Rebalanced: Monster Defense Power halved (50%) per user request!
+        defReduction: (base.defReduction || 0) * 0.5,
         teleports: !!(base.teleports && currentFloor >= 70),
         summonsMinions: !!(base.summonsMinions && currentFloor >= 80),
         throwsLavaRock: !!(base.throwsLavaRock && currentFloor >= 90),
@@ -4546,6 +4837,14 @@
         });
 
         gainXP(en.xp);
+
+        // Item #4 (1.2): When all monsters on this floor are defeated, mark floor cleared & open all fog!
+        if (currentFloor >= 1 && enemies.length === 0) {
+          player.clearedFloors.add(currentFloor);
+          revealEntireFloor();
+          saveHeroProfileToStorage();
+          showToast(`🎉 B${currentFloor} 魔物已全數肅清！迷霧已全面開啟，已標出樓梯位置`);
+        }
 
         if (en.isBoss) {
           document.getElementById('bossBarContainer').classList.add('hidden');
@@ -4801,6 +5100,30 @@
       updateHudUI();
     }
 
+    // Item #3 (1.2): Bidirectional Town Portal Button & Portal Archway
+    function useTownPortal() {
+      if (currentFloor >= 1) {
+        player.townPortalFloor = currentFloor;
+        playSound('levelup');
+        saveHeroProfileToStorage();
+        loadMountainVillage(false);
+        portalCooldown = 1.4;
+        player.x = 8.8;
+        player.z = 3.8;
+        player.y = getVillageWalkableHeight(player.x, player.z);
+        if (playerMesh) playerMesh.position.set(player.x, player.y, player.z);
+        updateHudUI();
+        showToast(`🌀 已開啟回城傳送門返回村莊！補給完畢後走進廣場的「藍色傳送門」或按 T 即可直接回 B${player.townPortalFloor}`);
+      } else if (player.townPortalFloor && player.townPortalFloor >= 1) {
+        const targetFl = player.townPortalFloor;
+        playSound('levelup');
+        loadMineFloor(targetFl, false);
+        showToast(`🌀 已透過傳送門直接返回 B${targetFl}！`);
+      } else {
+        showToast('🌀 請先進入礦坑地城後，即可隨時使用「回城 (T)」開啟傳送門！');
+      }
+    }
+
     // =========================================================================
     // 13. UI, DIABLO INVENTORY, 1-25 SHOP, BLACK MARKET & QUEST HANDLERS
     // =========================================================================
@@ -4856,6 +5179,10 @@
       const mpKey = 'mp' + player.activeMpTier;
       document.getElementById('hpPotCountBadge').textContent = `Lv${player.activeHpTier} x${player.potions[hpKey] || 0}`;
       document.getElementById('mpPotCountBadge').textContent = `Lv${player.activeMpTier} x${player.potions[mpKey] || 0}`;
+      const tpBadge = document.getElementById('townPortalBadge');
+      if (tpBadge) {
+        tpBadge.textContent = currentFloor >= 1 ? `記住B${currentFloor}` : player.townPortalFloor >= 1 ? `回B${player.townPortalFloor}` : '傳送門';
+      }
 
       // Update Active Quests in Menu Drawer
       const qBox = document.getElementById('activeQuestsHudBox');
@@ -5260,8 +5587,12 @@
           loadMineFloor(inter.prevFloor, true);
         }
       } else if (inter.type === 'stairs') {
+        if (currentFloor >= 1) player.clearedFloors.add(currentFloor);
         playSound('levelup');
         loadMineFloor(inter.nextFloor, false);
+      } else if (inter.type === 'town_portal_return') {
+        playSound('levelup');
+        loadMineFloor(inter.targetFloor || player.townPortalFloor || 1, false);
       } else if (inter.type === 'house_door') {
         playSound('potion');
         lastVillageReturnPos = { x: inter.exitX, z: inter.exitZ, rotY: inter.exitRotY };
@@ -5414,6 +5745,8 @@
         useMpPotion();
       } else if (k === 'f') {
         triggerInteraction();
+      } else if (k === 't') {
+        useTownPortal();
       } else if (k === 'i' || k === 'b') {
         const invM = document.getElementById('inventoryModal');
         if (invM.classList.contains('hidden')) openInventoryModal();
@@ -5520,6 +5853,7 @@
     bindInstantActionButton('btnFireball', castFireball);
     bindInstantActionButton('btnHpPot', useHpPotion);
     bindInstantActionButton('btnMpPot', useMpPotion);
+    bindInstantActionButton('btnTownPortal', useTownPortal);
 
     // Lock Mobile Double-Tap & Pinch Zoom completely
     document.addEventListener('dblclick', (e) => e.preventDefault(), { passive: false });
@@ -6177,6 +6511,9 @@
       player.activeHpTier = 1;
       player.activeMpTier = 1;
       player.bag = [];
+      player.clearedFloors = new Set();
+      player.deepestFloor = 1;
+      player.townPortalFloor = 0;
       player.ownedItems = new Set(['w_0', 'a_0']);
       HOUSE_QUESTS.forEach((q) => {
         q.status = 'available';
@@ -6210,6 +6547,9 @@
           activeHpTier: player.activeHpTier,
           activeMpTier: player.activeMpTier,
           bag: JSON.parse(JSON.stringify(player.bag)),
+          clearedFloors: Array.from(player.clearedFloors),
+          deepestFloor: player.deepestFloor || 1,
+          townPortalFloor: player.townPortalFloor || 0,
           questStates: HOUSE_QUESTS.map((q) => ({ status: q.status, progress: q.progress }))
         };
         localStorage.setItem(SLOTS_STORAGE_KEY, JSON.stringify(saveSlotsData));
@@ -6243,6 +6583,9 @@
       player.activeHpTier = data.activeHpTier || 1;
       player.activeMpTier = data.activeMpTier || 1;
       player.bag = Array.isArray(data.bag) ? JSON.parse(JSON.stringify(data.bag)) : [];
+      player.clearedFloors = new Set(Array.isArray(data.clearedFloors) ? data.clearedFloors : []);
+      player.deepestFloor = data.deepestFloor || 1;
+      player.townPortalFloor = data.townPortalFloor || 0;
       if (Array.isArray(data.questStates)) {
         data.questStates.forEach((qs, i) => {
           if (HOUSE_QUESTS[i] && qs) {
@@ -6673,8 +7016,10 @@
       const px = (player.x / TILE + MAP / 2) * scale;
       const pz = (player.z / TILE + MAP / 2) * scale;
 
-      // Always draw dashed guide line from player to Downward Staircase so player never gets lost!
-      if (currentDownStairsPos) {
+      const showDownStairs = isDownStairsExplored();
+
+      // Item #4 & #5 (1.2): Only draw guide line to Downward Staircase if floor is cleared or stairs tile is explored!
+      if (currentDownStairsPos && showDownStairs) {
         const sx = (currentDownStairsPos.x / TILE + MAP / 2) * scale;
         const sz = (currentDownStairsPos.z / TILE + MAP / 2) * scale;
         minimapCtx.strokeStyle = 'rgba(251, 191, 36, 0.55)';
@@ -6687,10 +7032,13 @@
         minimapCtx.setLineDash([]);
       }
 
-      // Always draw Upward Stairs (Blue ▲) & Downward Stairs (Orange ▼) on Minimap even through fog!
       for (const inter of interactables) {
+        const igx = Math.round(inter.x / TILE + MAP / 2);
+        const igz = Math.round(inter.z / TILE + MAP / 2);
+        const isTileExplored = isFloorCleared(currentFloor) || (igx >= 0 && igx < MAP && igz >= 0 && igz < MAP && explored[igx][igz]);
         const gx = (inter.x / TILE + MAP / 2) * scale;
         const gz = (inter.z / TILE + MAP / 2) * scale;
+
         if (inter.type === 'stairs_up') {
           minimapCtx.fillStyle = '#38bdf8';
           minimapCtx.beginPath();
@@ -6700,6 +7048,8 @@
           minimapCtx.closePath();
           minimapCtx.fill();
         } else if (inter.type === 'stairs') {
+          // Item #5 (1.2): Do NOT reveal downward stairs in fog on an un-cleared floor until explored!
+          if (!showDownStairs) continue;
           minimapCtx.fillStyle = '#f97316';
           minimapCtx.beginPath();
           minimapCtx.moveTo(gx, gz + 5.5);
@@ -6707,7 +7057,7 @@
           minimapCtx.lineTo(gx + 5, gz - 4);
           minimapCtx.closePath();
           minimapCtx.fill();
-        } else {
+        } else if (isTileExplored) {
           minimapCtx.fillStyle = '#fbbf24';
           minimapCtx.fillRect(gx - 2.5, gz - 2.5, 5, 5);
         }
@@ -6832,14 +7182,20 @@
         playerMesh.rotation.y = player.rotY;
 
         if (stairCompassMesh && currentDownStairsPos && currentFloor >= 1 && currentFloor < MAX_FLOOR) {
-          stairCompassMesh.visible = true;
-          const worldAngleToStairs = Math.atan2(
-            currentDownStairsPos.x - player.x,
-            currentDownStairsPos.z - player.z
-          );
-          stairCompassMesh.rotation.y = worldAngleToStairs - player.rotY;
-          const distM = Math.round(Math.hypot(currentDownStairsPos.x - player.x, currentDownStairsPos.z - player.z));
-          document.getElementById('stairDistLabel').textContent = `${distM}m`;
+          // Item #5 (1.2): Only show 3D compass arrow & distance once downward stairs are explored or floor is cleared!
+          if (isDownStairsExplored()) {
+            stairCompassMesh.visible = true;
+            const worldAngleToStairs = Math.atan2(
+              currentDownStairsPos.x - player.x,
+              currentDownStairsPos.z - player.z
+            );
+            stairCompassMesh.rotation.y = worldAngleToStairs - player.rotY;
+            const distM = Math.round(Math.hypot(currentDownStairsPos.x - player.x, currentDownStairsPos.z - player.z));
+            document.getElementById('stairDistLabel').textContent = `${distM}m`;
+          } else {
+            stairCompassMesh.visible = false;
+            document.getElementById('stairDistLabel').textContent = '迷霧未知';
+          }
         } else if (stairCompassMesh) {
           stairCompassMesh.visible = false;
         }
