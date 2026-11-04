@@ -4453,15 +4453,24 @@
       grid = Array.from({ length: MAP }, () => Array(MAP).fill(1));
       explored = Array.from({ length: MAP }, () => Array(MAP).fill(false));
 
+      // Seeded PRNG per floor so all teammates in Multiplayer share the 100% identical maze & staircase coordinates!
+      let floorSeed = ((floorNum * 2654435761) ^ 0x5bd1e995) >>> 0;
+      const floorRng = () => {
+        floorSeed = (floorSeed + 0x6D2B79F5) >>> 0;
+        let t = Math.imul(floorSeed ^ (floorSeed >>> 15), 1 | floorSeed);
+        t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+        return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+      };
+
       const targetRooms = Math.min(18, 8 + Math.floor(floorNum / 7));
       const rooms = [];
       let attempts = 0;
       while (rooms.length < targetRooms && attempts < 140) {
         attempts++;
-        const halfW = (rooms.length === targetRooms - 1 && floorNum % 10 === 0) ? 4 : (2 + Math.floor(Math.random() * 2));
-        const halfH = (rooms.length === targetRooms - 1 && floorNum % 10 === 0) ? 4 : (2 + Math.floor(Math.random() * 2));
-        const cx = 6 + Math.floor(Math.random() * (MAP - 12));
-        const cz = 6 + Math.floor(Math.random() * (MAP - 12));
+        const halfW = (rooms.length === targetRooms - 1 && floorNum % 10 === 0) ? 4 : (2 + Math.floor(floorRng() * 2));
+        const halfH = (rooms.length === targetRooms - 1 && floorNum % 10 === 0) ? 4 : (2 + Math.floor(floorRng() * 2));
+        const cx = 6 + Math.floor(floorRng() * (MAP - 12));
+        const cz = 6 + Math.floor(floorRng() * (MAP - 12));
 
         let overlap = false;
         for (const r of rooms) {
@@ -4500,7 +4509,7 @@
       const corridorTiles = [];
       function carveCorridor(x1, z1, x2, z2) {
         let x = x1, z = z1;
-        const horizFirst = Math.random() < 0.5;
+        const horizFirst = floorRng() < 0.5;
         const stepTile = (tx, tz) => {
           if (tx > 2 && tx < MAP - 3 && tz > 2 && tz < MAP - 3) {
             if (grid[tx][tz] === 1) corridorTiles.push({ gx: tx, gz: tz });
@@ -4522,9 +4531,9 @@
         carveCorridor(rooms[i - 1].cx, rooms[i - 1].cz, rooms[i].cx, rooms[i].cz);
       }
       for (let b = 0; b < 3; b++) {
-        const rA = rooms[Math.floor(Math.random() * rooms.length)];
-        const bx = Math.max(4, Math.min(MAP - 5, rA.cx + (Math.random() < 0.5 ? -8 : 8)));
-        const bz = Math.max(4, Math.min(MAP - 5, rA.cz + (Math.random() < 0.5 ? -8 : 8)));
+        const rA = rooms[Math.floor(floorRng() * rooms.length)];
+        const bx = Math.max(4, Math.min(MAP - 5, rA.cx + (floorRng() < 0.5 ? -8 : 8)));
+        const bz = Math.max(4, Math.min(MAP - 5, rA.cz + (floorRng() < 0.5 ? -8 : 8)));
         carveCorridor(rA.cx, rA.cz, bx, bz);
       }
 
@@ -4678,8 +4687,8 @@
         const count = baseRoomMonsters + (i % 2);
         for (let m = 0; m < count; m++) {
           const chosen = pool[(i + m) % pool.length];
-          const ox = (Math.random() - 0.5) * 4.2;
-          const oz = (Math.random() - 0.5) * 4.2;
+          const ox = (floorRng() - 0.5) * 4.2;
+          const oz = (floorRng() - 0.5) * 4.2;
           const sx = pos.x + ox, sz = pos.z + oz;
           if (Math.hypot(sx - startPos.x, sz - startPos.z) < 22.0) continue;
           spawnEnemy(chosen, sx, sz, floorHpMult, floorDmgMult);
@@ -6234,73 +6243,31 @@
       );
     }
 
-    function buildRemoteAdventurerMesh(wTier = 0, aTier = 0, nameLabel = '隊友', chatText = '', isAi = false) {
-      const root = new THREE.Group();
-      const skinMat = new THREE.MeshStandardMaterial({ color: 0xdab492, roughness: 0.6 });
-      const coatColors = [0x1e3a5f, 0x3b2f26, 0x334155, 0x7c2d12];
-      const coatMat = new THREE.MeshStandardMaterial({ color: coatColors[aTier % coatColors.length], roughness: 0.55 });
-      const armorColors = [0x5c3820, 0x6b4423, 0x9ca3af, 0xfbbf24];
-      const armorMat = new THREE.MeshStandardMaterial({
-        color: armorColors[aTier % 4],
-        metalness: aTier >= 2 ? 0.82 : 0.25,
-        roughness: 0.35
-      });
-      const bootMat = new THREE.MeshStandardMaterial({ color: 0x3b2416, roughness: 0.6 });
-
-      const leftLeg = new THREE.Mesh(new THREE.CylinderGeometry(0.08, 0.06, 0.78, 8), bootMat);
-      leftLeg.position.set(-0.11, 0.42, 0);
-      const rightLeg = new THREE.Mesh(new THREE.CylinderGeometry(0.08, 0.06, 0.78, 8), bootMat);
-      rightLeg.position.set(0.11, 0.42, 0);
-      root.add(leftLeg, rightLeg);
-
-      const chest = new THREE.Mesh(new THREE.CylinderGeometry(0.2, 0.15, 0.5, 10), coatMat);
-      chest.position.y = 1.18;
-      chest.scale.set(1.1, 1, 0.8);
-      root.add(chest);
-
-      [-0.24, 0.24].forEach((sx) => {
-        const pld = new THREE.Mesh(new THREE.SphereGeometry(0.1, 8, 8), armorMat);
-        pld.position.set(sx, 1.38, 0);
-        root.add(pld);
-      });
-
-      const head = new THREE.Mesh(new THREE.SphereGeometry(0.11, 10, 10), skinMat);
-      head.position.y = 1.62;
-      const hair = new THREE.Mesh(
-        new THREE.SphereGeometry(0.116, 9, 9),
-        new THREE.MeshStandardMaterial({ color: isAi ? 0x78350f : 0x1f2937 })
-      );
-      hair.position.set(0, 1.65, -0.01);
-      root.add(head, hair);
-
-      const rightArm = new THREE.Group();
-      rightArm.position.set(0.24, 1.36, 0);
-      const armCyl = new THREE.Mesh(new THREE.CylinderGeometry(0.055, 0.045, 0.46, 8), coatMat);
-      armCyl.position.y = -0.2;
-      rightArm.add(armCyl);
-
-      const isRune = wTier >= 3;
-      const blade = new THREE.Mesh(
-        new THREE.BoxGeometry(0.065, isRune ? 0.95 : 0.75, 0.025),
-        new THREE.MeshStandardMaterial({
-          color: isRune ? 0x38bdf8 : 0xe5e7eb,
-          emissive: isRune ? 0x0284c7 : 0x000000,
-          emissiveIntensity: isRune ? 0.8 : 0,
-          metalness: 0.88,
-          roughness: 0.2
-        })
-      );
-      blade.position.set(0, -0.4, 0.35);
-      blade.rotation.x = Math.PI / 2.3;
-      rightArm.add(blade);
-      root.add(rightArm);
-
+    function buildRemoteAdventurerMesh(wTier = 0, aTier = 0, nameLabel = '隊友', chatText = '', isAi = false, avatarId = 'wanderer_m') {
+      const preset = getAvatarPreset(avatarId || 'wanderer_m');
+      const built = buildCharacterModelFromPreset(preset, wTier, aTier, false);
       const badge = createOverheadNameplate(nameLabel, chatText, isAi);
-      badge.position.y = 2.15;
-      root.add(badge);
+      badge.position.y = 2.22;
+      built.root.add(badge);
 
-      root.scale.setScalar(1.06);
-      return { root, leftLeg, rightLeg, rightArm, badge };
+      // Add a glowing cyan teammate ring on the ground so teammates stand out clearly in dark dungeons!
+      const teamRing = new THREE.Mesh(
+        new THREE.RingGeometry(0.42, 0.54, 24),
+        new THREE.MeshBasicMaterial({ color: isAi ? 0xc084fc : 0x38bdf8, side: THREE.DoubleSide, transparent: true, opacity: 0.75 })
+      );
+      teamRing.rotation.x = Math.PI / 2;
+      teamRing.position.y = 0.04;
+      built.root.add(teamRing);
+
+      built.root.scale.setScalar(1.08);
+      return {
+        root: built.root,
+        leftLeg: built.lLeg,
+        rightLeg: built.rLeg,
+        leftArm: built.lArm,
+        rightArm: built.rArm,
+        badge
+      };
     }
 
     function initFirebaseMultiplayer() {
@@ -6311,8 +6278,7 @@
             firebase.initializeApp(FIREBASE_CONFIG);
           }
           fbDb = firebase.database();
-          firebase.auth().signInAnonymously().then((cred) => {
-            if (cred && cred.user) myClientId = cred.user.uid;
+          firebase.auth().signInAnonymously().then(() => {
             connectToMultiplayerRoom(currentRoomId);
           }).catch(() => {
             connectToMultiplayerRoom(currentRoomId);
@@ -6373,14 +6339,15 @@
           let rp = remotePlayers.get(uid);
           const labelStr = `[Lv.${data.lv || 1}] ${data.name || '旅人'}`;
           if (!rp) {
-            const meshObj = buildRemoteAdventurerMesh(data.w || 0, data.a || 0, labelStr, data.msg || '', false);
+            const meshObj = buildRemoteAdventurerMesh(data.w || 0, data.a || 0, labelStr, data.msg || '', false, data.av || 'wanderer_m');
             meshObj.root.position.set(data.x || 0, data.y || 0, data.z || 0);
             entitiesGroup.add(meshObj.root);
             rp = {
               uid,
               name: data.name || '旅人',
               lv: data.lv || 1,
-              floor: data.fl || 0,
+              floor: data.fl ?? 0,
+              avatarId: data.av || 'wanderer_m',
               x: data.x || 0,
               y: data.y || 0,
               z: data.z || 0,
@@ -6392,24 +6359,33 @@
               aTier: data.a || 0,
               msg: data.msg || '',
               walkPhase: 0,
-              swingAnim: 0,
+              swingAnim: data.sw ? 0.25 : 0,
               meshObj
             };
             remotePlayers.set(uid, rp);
           } else {
+            const prevFloor = rp.floor;
             rp.targetX = data.x ?? rp.targetX;
             rp.targetY = data.y ?? rp.targetY;
             rp.targetZ = data.z ?? rp.targetZ;
             rp.rotY = data.r ?? rp.rotY;
             rp.floor = data.fl ?? 0;
-            if (rp.wTier !== (data.w || 0) || rp.aTier !== (data.a || 0) || rp.msg !== (data.msg || '') || rp.name !== data.name) {
+            if (prevFloor !== rp.floor) {
+              rp.x = rp.targetX;
+              rp.y = rp.targetY;
+              rp.z = rp.targetZ;
+            }
+            if (data.sw) rp.swingAnim = 0.25;
+            const nextAv = data.av || 'wanderer_m';
+            if (rp.wTier !== (data.w || 0) || rp.aTier !== (data.a || 0) || rp.msg !== (data.msg || '') || rp.name !== data.name || rp.avatarId !== nextAv) {
               entitiesGroup.remove(rp.meshObj.root);
               rp.wTier = data.w || 0;
               rp.aTier = data.a || 0;
               rp.msg = data.msg || '';
               rp.name = data.name || '旅人';
               rp.lv = data.lv || 1;
-              rp.meshObj = buildRemoteAdventurerMesh(rp.wTier, rp.aTier, `[Lv.${rp.lv}] ${rp.name}`, rp.msg, false);
+              rp.avatarId = nextAv;
+              rp.meshObj = buildRemoteAdventurerMesh(rp.wTier, rp.aTier, `[Lv.${rp.lv}] ${rp.name}`, rp.msg, false, rp.avatarId);
               rp.meshObj.root.position.set(rp.x, rp.y, rp.z);
               entitiesGroup.add(rp.meshObj.root);
             }
@@ -6439,6 +6415,8 @@
         name: myPlayerName,
         lv: player.level,
         fl: currentFloor,
+        av: player.avatarId || 'wanderer_m',
+        sw: player.swingAnim > 0 ? 1 : 0,
         x: Math.round(player.x * 100) / 100,
         y: Math.round(player.y * 100) / 100,
         z: Math.round(player.z * 100) / 100,
@@ -6521,22 +6499,43 @@
     function updateMultiplayerAndBots(dt) {
       broadcastMyState(false);
 
-      // Smooth 60FPS Lerp for Remote Firebase Players
+      // Smooth 60FPS Lerp for Remote Firebase Players (re-attaching to entitiesGroup if clearWorld() wiped it!)
       remotePlayers.forEach((rp) => {
-        rp.meshObj.root.visible = rp.floor === currentFloor;
+        if (!rp.meshObj || !rp.meshObj.root) return;
+        if (!rp.meshObj.root.parent) {
+          entitiesGroup.add(rp.meshObj.root);
+        }
+        rp.meshObj.root.visible = Number(rp.floor) === Number(currentFloor);
         if (!rp.meshObj.root.visible) return;
         const dx = rp.targetX - rp.x;
         const dz = rp.targetZ - rp.z;
         const dist = Math.hypot(dx, dz);
-        rp.x += dx * Math.min(1, dt * 10);
-        rp.y += (rp.targetY - rp.y) * Math.min(1, dt * 10);
-        rp.z += dz * Math.min(1, dt * 10);
+        if (dist > 25) {
+          rp.x = rp.targetX;
+          rp.y = rp.targetY;
+          rp.z = rp.targetZ;
+        } else {
+          rp.x += dx * Math.min(1, dt * 10);
+          rp.y += (rp.targetY - rp.y) * Math.min(1, dt * 10);
+          rp.z += dz * Math.min(1, dt * 10);
+        }
         rp.meshObj.root.position.set(rp.x, rp.y, rp.z);
         rp.meshObj.root.rotation.y = rp.rotY;
-        if (dist > 0.05) {
+        if (dist > 0.04) {
           rp.walkPhase += dt * 10;
-          rp.meshObj.leftLeg.rotation.x = Math.sin(rp.walkPhase) * 0.45;
-          rp.meshObj.rightLeg.rotation.x = -Math.sin(rp.walkPhase) * 0.45;
+          if (rp.meshObj.leftLeg) rp.meshObj.leftLeg.rotation.x = Math.sin(rp.walkPhase) * 0.45;
+          if (rp.meshObj.rightLeg) rp.meshObj.rightLeg.rotation.x = -Math.sin(rp.walkPhase) * 0.45;
+          if (rp.meshObj.leftArm) rp.meshObj.leftArm.rotation.x = -Math.sin(rp.walkPhase) * 0.32;
+        } else {
+          if (rp.meshObj.leftLeg) rp.meshObj.leftLeg.rotation.x = 0;
+          if (rp.meshObj.rightLeg) rp.meshObj.rightLeg.rotation.x = 0;
+          if (rp.meshObj.leftArm) rp.meshObj.leftArm.rotation.x = 0;
+        }
+        if (rp.swingAnim > 0) {
+          rp.swingAnim = Math.max(0, rp.swingAnim - dt);
+          if (rp.meshObj.rightArm) rp.meshObj.rightArm.rotation.x = -1.4 + (0.25 - rp.swingAnim) * 8.0;
+        } else if (rp.meshObj.rightArm) {
+          rp.meshObj.rightArm.rotation.x = dist > 0.04 ? Math.sin(rp.walkPhase) * 0.32 : 0;
         }
       });
 
@@ -7132,18 +7131,26 @@
     }
 
     function updateFogOfWar() {
-      if (currentFloor === 0) return;
-      const pgx = Math.round(player.x / TILE + MAP / 2);
-      const pgz = Math.round(player.z / TILE + MAP / 2);
-      const radius = 6;
-      for (let dx = -radius; dx <= radius; dx++) {
-        for (let dz = -radius; dz <= radius; dz++) {
-          const nx = pgx + dx, nz = pgz + dz;
-          if (nx >= 0 && nx < MAP && nz >= 0 && nz < MAP && dx * dx + dz * dz <= radius * radius) {
-            explored[nx][nz] = true;
+      if (currentFloor <= 0) return;
+      const revealAt = (wx, wz, radius) => {
+        const gx = Math.round(wx / TILE + MAP / 2);
+        const gz = Math.round(wz / TILE + MAP / 2);
+        for (let dx = -radius; dx <= radius; dx++) {
+          for (let dz = -radius; dz <= radius; dz++) {
+            const nx = gx + dx, nz = gz + dz;
+            if (nx >= 0 && nx < MAP && nz >= 0 && nz < MAP && dx * dx + dz * dz <= radius * radius) {
+              explored[nx][nz] = true;
+            }
           }
         }
-      }
+      };
+      revealAt(player.x, player.z, 6);
+      // Shared Party Vision: Teammates on the same floor also reveal fog of war!
+      remotePlayers.forEach((rp) => {
+        if (Number(rp.floor) === Number(currentFloor)) {
+          revealAt(rp.x, rp.z, 5);
+        }
+      });
     }
 
     const minimapCtx = document.getElementById('minimapCanvas').getContext('2d');
@@ -7163,6 +7170,34 @@
           minimapCtx.fillStyle = inter.type === 'portal' ? '#f97316' : '#fbbf24';
           minimapCtx.fillRect(mx - 3, mz - 3, 6, 6);
         }
+        // Draw Teammates & AI Companions in Village Minimap
+        remotePlayers.forEach((rp) => {
+          if (Number(rp.floor) !== 0) return;
+          const tp = toMini(rp.x, rp.z);
+          minimapCtx.fillStyle = 'rgba(56, 189, 248, 0.35)';
+          minimapCtx.beginPath();
+          minimapCtx.arc(tp.mx, tp.mz, 6.5, 0, Math.PI * 2);
+          minimapCtx.fill();
+          minimapCtx.fillStyle = '#38bdf8';
+          minimapCtx.beginPath();
+          minimapCtx.arc(tp.mx, tp.mz, 3.8, 0, Math.PI * 2);
+          minimapCtx.fill();
+          minimapCtx.strokeStyle = '#ffffff';
+          minimapCtx.lineWidth = 1.2;
+          minimapCtx.stroke();
+          minimapCtx.font = 'bold 9px sans-serif';
+          minimapCtx.fillStyle = '#bae6fd';
+          minimapCtx.textAlign = 'center';
+          minimapCtx.fillText((rp.name || '隊友').slice(0, 4), tp.mx, Math.max(9, tp.mz - 6));
+        });
+        for (const bot of aiCompanions) {
+          const bp = toMini(bot.x, bot.z);
+          minimapCtx.fillStyle = '#c084fc';
+          minimapCtx.beginPath();
+          minimapCtx.arc(bp.mx, bp.mz, 3.2, 0, Math.PI * 2);
+          minimapCtx.fill();
+        }
+
         const p = toMini(player.x, player.z);
         minimapCtx.fillStyle = '#4ade80';
         minimapCtx.beginPath();
@@ -7243,9 +7278,56 @@
         }
       }
 
+      // Draw Teammates & AI Companions on Dungeon Minimap (with glowing Cyan beacon & radar line!)
+      remotePlayers.forEach((rp) => {
+        if (Number(rp.floor) !== Number(currentFloor)) return;
+        const tx = (rp.x / TILE + MAP / 2) * scale;
+        const tz = (rp.z / TILE + MAP / 2) * scale;
+
+        // Subtle cyan link line from you to teammate
+        minimapCtx.strokeStyle = 'rgba(56, 189, 248, 0.45)';
+        minimapCtx.lineWidth = 1.2;
+        minimapCtx.setLineDash([2, 2]);
+        minimapCtx.beginPath();
+        minimapCtx.moveTo(px, pz);
+        minimapCtx.lineTo(tx, tz);
+        minimapCtx.stroke();
+        minimapCtx.setLineDash([]);
+
+        // Outer glowing halo
+        minimapCtx.fillStyle = 'rgba(56, 189, 248, 0.38)';
+        minimapCtx.beginPath();
+        minimapCtx.arc(tx, tz, 6.8, 0, Math.PI * 2);
+        minimapCtx.fill();
+
+        // Bright cyan core dot + white ring
+        minimapCtx.fillStyle = '#38bdf8';
+        minimapCtx.beginPath();
+        minimapCtx.arc(tx, tz, 3.8, 0, Math.PI * 2);
+        minimapCtx.fill();
+        minimapCtx.strokeStyle = '#ffffff';
+        minimapCtx.lineWidth = 1.2;
+        minimapCtx.stroke();
+
+        // Teammate name tag above dot
+        minimapCtx.font = 'bold 9px sans-serif';
+        minimapCtx.fillStyle = '#e0f2fe';
+        minimapCtx.textAlign = 'center';
+        minimapCtx.fillText((rp.name || '隊友').slice(0, 4), tx, Math.max(9, tz - 6));
+      });
+
+      for (const bot of aiCompanions) {
+        const bx = (bot.x / TILE + MAP / 2) * scale;
+        const bz = (bot.z / TILE + MAP / 2) * scale;
+        minimapCtx.fillStyle = '#c084fc';
+        minimapCtx.beginPath();
+        minimapCtx.arc(bx, bz, 3.2, 0, Math.PI * 2);
+        minimapCtx.fill();
+      }
+
       minimapCtx.fillStyle = '#4ade80';
       minimapCtx.beginPath();
-      minimapCtx.arc(px, pz, 3.6, 0, Math.PI * 2);
+      minimapCtx.arc(px, pz, 3.8, 0, Math.PI * 2);
       minimapCtx.fill();
     }
 
