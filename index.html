@@ -378,10 +378,11 @@
           <span class="text-[9px] text-sky-300 leading-none">10 MP</span>
         </button>
       </div>
-      <!-- Left Analog Circle: Camera Angle Control (左下圓圈控制視角) -->
-      <div id="camStickZone" class="w-16 h-16 sm:w-[72px] sm:h-[72px] ml-1 rounded-full bg-stone-950/85 border-2 border-amber-500/75 shadow-[inset_0_2px_10px_rgba(0,0,0,0.85),0_4px_14px_rgba(0,0,0,0.65)] relative flex items-center justify-center touch-none select-none cursor-grab active:cursor-grabbing">
-        <div class="w-12 h-12 sm:w-14 sm:h-14 rounded-full border border-amber-500/25 pointer-events-none"></div>
-        <div id="camStickKnob" class="w-7 h-7 sm:w-8 sm:h-8 rounded-full bg-gradient-to-b from-amber-500/45 to-stone-800/90 border border-amber-300/90 shadow-md pointer-events-none flex items-center justify-center text-[9px] text-amber-200 font-bold">視角</div>
+      <!-- Left Analog Circle: Switch-Style Thumbstick for Camera Angle Control (左下香菇頭置中控制視角) -->
+      <div id="camStickZone" class="w-[70px] h-[70px] sm:w-[76px] sm:h-[76px] self-center rounded-full bg-stone-950/90 border-2 border-amber-500/80 shadow-[inset_0_3px_12px_rgba(0,0,0,0.9),0_4px_14px_rgba(0,0,0,0.7)] relative flex items-center justify-center touch-none select-none cursor-grab active:cursor-grabbing">
+        <div class="absolute inset-2 rounded-full border border-amber-500/25 pointer-events-none"></div>
+        <div class="absolute w-2 h-2 rounded-full bg-amber-500/20 pointer-events-none"></div>
+        <div id="camStickKnob" class="w-9 h-9 sm:w-10 sm:h-10 rounded-full bg-gradient-to-b from-stone-700 via-stone-800 to-stone-950 border-2 border-amber-400/90 shadow-[0_3px_8px_rgba(0,0,0,0.85),inset_0_1px_3px_rgba(255,255,255,0.25)] pointer-events-none flex items-center justify-center text-[10px] text-amber-200 font-bold tracking-tight transition-transform duration-75 ease-out">視角</div>
       </div>
       <div class="orb-shell mt-0.5">
         <div id="hpOrbFill" class="orb-fill-hp" style="height: 100%;"></div>
@@ -422,10 +423,11 @@
       <button id="dpadAction" type="button" title="互動 (F)" class="gothic-btn w-16 h-16 sm:w-[68px] sm:h-[68px] mr-0.5 rounded-2xl border-2 border-amber-500/85 bg-stone-950/90 shadow-xl flex flex-col items-center justify-center active:scale-95">
         <span class="text-2xl sm:text-3xl font-serif font-bold text-amber-300 leading-none">F</span>
       </button>
-      <!-- Right Analog Circle: 360-Degree Movement Control (右下圓圈控制前後左右移動) -->
-      <div id="moveStickZone" class="w-16 h-16 sm:w-[72px] sm:h-[72px] mr-1 rounded-full bg-stone-950/85 border-2 border-amber-500/75 shadow-[inset_0_2px_10px_rgba(0,0,0,0.85),0_4px_14px_rgba(0,0,0,0.65)] relative flex items-center justify-center touch-none select-none cursor-grab active:cursor-grabbing">
-        <div class="w-12 h-12 sm:w-14 sm:h-14 rounded-full border border-amber-500/25 pointer-events-none"></div>
-        <div id="moveStickKnob" class="w-7 h-7 sm:w-8 sm:h-8 rounded-full bg-gradient-to-b from-amber-500/45 to-stone-800/90 border border-amber-300/90 shadow-md pointer-events-none flex items-center justify-center text-[9px] text-amber-200 font-bold">移動</div>
+      <!-- Right Analog Circle: Switch-Style Thumbstick for 360-Degree Movement Control (右下香菇頭置中控制移動) -->
+      <div id="moveStickZone" class="w-[70px] h-[70px] sm:w-[76px] sm:h-[76px] self-center rounded-full bg-stone-950/90 border-2 border-amber-500/80 shadow-[inset_0_3px_12px_rgba(0,0,0,0.9),0_4px_14px_rgba(0,0,0,0.7)] relative flex items-center justify-center touch-none select-none cursor-grab active:cursor-grabbing">
+        <div class="absolute inset-2 rounded-full border border-amber-500/25 pointer-events-none"></div>
+        <div class="absolute w-2 h-2 rounded-full bg-amber-500/20 pointer-events-none"></div>
+        <div id="moveStickKnob" class="w-9 h-9 sm:w-10 sm:h-10 rounded-full bg-gradient-to-b from-stone-700 via-stone-800 to-stone-950 border-2 border-amber-400/90 shadow-[0_3px_8px_rgba(0,0,0,0.85),inset_0_1px_3px_rgba(255,255,255,0.25)] pointer-events-none flex items-center justify-center text-[10px] text-amber-200 font-bold tracking-tight transition-transform duration-75 ease-out">移動</div>
       </div>
       <!-- Keep legacy D-Pad IDs hidden for DOM compatibility -->
       <div class="hidden">
@@ -6648,27 +6650,44 @@
       const knob = document.getElementById(knobId);
       if (!zone || !knob) return;
       let activePointerId = null;
-      const maxRad = 22;
+      let startX = 0;
+      let startY = 0;
+      const maxRad = 24;
+      const deadzone = 8.5; // Resting thumb on knob won't trigger until pushed > 8.5px
 
-      function updateFromEvent(e) {
-        const rect = zone.getBoundingClientRect();
-        const cx = rect.left + rect.width * 0.5;
-        const cy = rect.top + rect.height * 0.5;
-        let dx = e.clientX - cx;
-        let dy = e.clientY - cy;
-        const dist = Math.hypot(dx, dy);
-        if (dist > maxRad) {
-          dx = (dx / dist) * maxRad;
-          dy = (dy / dist) * maxRad;
+      function updateFromDrag(e) {
+        let dx = e.clientX - startX;
+        let dy = e.clientY - startY;
+        const rawDist = Math.hypot(dx, dy);
+
+        if (rawDist <= deadzone) {
+          // Visual subtle 2px feedback while inside deadzone, but zero output movement
+          const tinyX = dx * 0.2;
+          const tinyY = dy * 0.2;
+          knob.style.transform = `translate(${tinyX.toFixed(1)}px, ${tinyY.toFixed(1)}px)`;
+          outVec.x = 0;
+          outVec.y = 0;
+          return;
         }
-        knob.style.transform = `translate(${dx.toFixed(1)}px, ${dy.toFixed(1)}px)`;
-        outVec.x = dx / maxRad;
-        outVec.y = dy / maxRad;
+
+        const clampedDist = Math.min(rawDist, maxRad);
+        const dirX = dx / rawDist;
+        const dirY = dy / rawDist;
+        const visualX = dirX * clampedDist;
+        const visualY = dirY * clampedDist;
+        knob.style.transform = `translate(${visualX.toFixed(1)}px, ${visualY.toFixed(1)}px)`;
+
+        // Smooth Switch-style progressive curve (0.0 at deadzone edge -> 1.0 at maxRad)
+        const norm = (clampedDist - deadzone) / (maxRad - deadzone);
+        const curvedMag = Math.pow(norm, 1.45);
+        outVec.x = dirX * curvedMag;
+        outVec.y = dirY * curvedMag;
         if (isMoveStick) moveTarget = null;
       }
 
       function resetStick() {
         activePointerId = null;
+        knob.style.transition = 'transform 120ms ease-out';
         knob.style.transform = 'translate(0px, 0px)';
         outVec.x = 0;
         outVec.y = 0;
@@ -6679,15 +6698,20 @@
         e.stopPropagation();
         ensureAudio();
         activePointerId = e.pointerId;
+        startX = e.clientX;
+        startY = e.clientY;
+        knob.style.transition = 'none';
+        knob.style.transform = 'translate(0px, 0px)';
+        outVec.x = 0;
+        outVec.y = 0;
         try { zone.setPointerCapture(e.pointerId); } catch (err) {}
-        updateFromEvent(e);
       });
 
       zone.addEventListener('pointermove', (e) => {
         if (activePointerId !== e.pointerId) return;
         e.preventDefault();
         e.stopPropagation();
-        updateFromEvent(e);
+        updateFromDrag(e);
       });
 
       zone.addEventListener('pointerup', (e) => {
@@ -6698,6 +6722,10 @@
       zone.addEventListener('pointercancel', (e) => {
         if (activePointerId !== e.pointerId) return;
         resetStick();
+      });
+
+      zone.addEventListener('lostpointercapture', () => {
+        if (activePointerId !== null) resetStick();
       });
     }
 
@@ -8458,10 +8486,10 @@
         }
       }
 
-      // Left Analog Circle: Smooth Camera Rotation
-      if (Math.hypot(camStickVec.x, camStickVec.y) > 0.05) {
-        player.camYaw -= camStickVec.x * 2.35 * dt;
-        player.camPitch = Math.max(0.18, Math.min(1.15, player.camPitch + camStickVec.y * 1.45 * dt));
+      // Left Analog Circle: Smooth Switch-Style Camera Rotation
+      if (Math.hypot(camStickVec.x, camStickVec.y) > 0.02) {
+        player.camYaw -= camStickVec.x * 1.65 * dt;
+        player.camPitch = Math.max(0.18, Math.min(1.15, player.camPitch + camStickVec.y * 1.05 * dt));
       }
 
       // Player Movement relative to Camera Yaw (Keyboard WASD + Right Analog Circle #moveStickZone)
@@ -8470,13 +8498,15 @@
       if (keys['s'] || keys['arrowdown']) moveF -= 1;
       if (keys['d'] || keys['arrowright']) moveR += 1;
       if (keys['a'] || keys['arrowleft']) moveR -= 1;
-      if (Math.hypot(moveStickVec.x, moveStickVec.y) > 0.08) {
+      if (Math.hypot(moveStickVec.x, moveStickVec.y) > 0.02) {
         moveF += -moveStickVec.y;
         moveR += moveStickVec.x;
       }
 
       let vx = 0, vz = 0;
+      let moveScale = 1.0;
       if (moveF !== 0 || moveR !== 0) {
+        moveScale = Math.min(1.0, Math.hypot(moveF, moveR));
         const fwdX = -Math.sin(player.camYaw);
         const fwdZ = -Math.cos(player.camYaw);
         const rgtX = Math.cos(player.camYaw);
@@ -8499,12 +8529,13 @@
         const len = Math.hypot(vx, vz) || 1;
         vx /= len;
         vz /= len;
-        const nx = player.x + vx * player.speed * dt;
-        const nz = player.z + vz * player.speed * dt;
+        const effSpeed = player.speed * moveScale;
+        const nx = player.x + vx * effSpeed * dt;
+        const nz = player.z + vz * effSpeed * dt;
         if (isWalkable(nx, player.z)) player.x = nx;
         if (isWalkable(player.x, nz)) player.z = nz;
         player.rotY = Math.atan2(vx, vz);
-        player.walkPhase += dt * 11;
+        player.walkPhase += dt * (11 * Math.max(0.35, moveScale));
       } else {
         player.walkPhase *= 0.85;
       }
