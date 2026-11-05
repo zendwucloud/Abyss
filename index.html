@@ -61,6 +61,23 @@
       background: radial-gradient(circle at center, transparent 35%, rgba(185, 28, 28, 0.55) 100%);
       opacity: 0; transition: opacity 0.18s ease-out;
     }
+    @keyframes lowHpBreath {
+      0%, 100% { opacity: 0.22; transform: scale(1.0); }
+      50% { opacity: 0.92; transform: scale(1.01); }
+    }
+    @keyframes lowHpBtnPulse {
+      0%, 100% { box-shadow: 0 0 8px rgba(239, 68, 68, 0.6), inset 0 0 6px rgba(239, 68, 68, 0.4); border-color: #ef4444; transform: scale(1); }
+      50% { box-shadow: 0 0 22px rgba(239, 68, 68, 1), 0 0 36px rgba(248, 113, 113, 0.85), inset 0 0 12px rgba(254, 202, 202, 0.75); border-color: #fef08a; transform: scale(1.08); }
+    }
+    #lowHpBreathingVignette {
+      position: fixed; inset: 0; pointer-events: none; z-index: 4;
+      background: radial-gradient(circle at center, transparent 40%, rgba(220, 38, 38, 0.48) 76%, rgba(153, 27, 27, 0.88) 100%);
+      box-shadow: inset 0 0 95px rgba(239, 68, 68, 0.85);
+      animation: lowHpBreath 1.15s ease-in-out infinite;
+    }
+    .low-hp-btn-pulse {
+      animation: lowHpBtnPulse 0.95s ease-in-out infinite !important;
+    }
     .gothic-panel {
       background: linear-gradient(180deg, rgba(22, 18, 15, 0.92) 0%, rgba(11, 9, 8, 0.96) 100%);
       border: 1px solid #634b34;
@@ -129,6 +146,12 @@
   <canvas id="gameCanvas"></canvas>
   <div id="vignette"></div>
   <div id="hurtFlash"></div>
+  <div id="lowHpBreathingVignette" class="hidden"></div>
+  <div id="lowHpDrinkBanner" class="hidden fixed top-24 sm:top-28 left-1/2 -translate-x-1/2 z-30 pointer-events-none text-center w-[90vw] max-w-md">
+    <div class="inline-block px-4 py-1.5 rounded-full bg-red-950/90 border-2 border-red-400 text-red-100 text-xs sm:text-sm font-black tracking-wide shadow-[0_0_25px_rgba(239,68,68,0.95)] animate-pulse">
+      🚨 生命低於 1/3！快按 [1] 鍵或點擊下方「🧪 生命」喝紅水！
+    </div>
+  </div>
   <div id="floatingTextLayer" class="fixed inset-0 pointer-events-none z-20 overflow-hidden"></div>
 
   <!-- Title Screen Overlay -->
@@ -643,11 +666,16 @@
 
       <!-- Online Player List & AI Party Bot Toggle -->
       <div class="p-3 rounded-xl bg-stone-900/90 border border-stone-700 space-y-2 text-xs">
-        <div class="flex items-center justify-between">
-          <span class="font-bold text-emerald-300">🟢 目前房間線上名單</span>
-          <button id="toggleAiPartyBtn" type="button" class="gothic-btn px-3 py-1 rounded-lg font-bold text-amber-300">
-            🤖 召喚 3 位 AI 共鬥隊友（單人預覽多人效果）
-          </button>
+        <div class="flex flex-wrap items-center justify-between gap-1.5">
+          <span class="font-bold text-emerald-300">🟢 目前房間線上名單（點擊隊友可瞬移匯合）</span>
+          <div class="flex flex-wrap gap-1.5">
+            <button id="openSecondTabBtn" type="button" class="gothic-btn px-2.5 py-1 rounded-lg font-bold text-sky-300 border border-sky-500/60">
+              🪟 開啟第 2 個同步測試視窗
+            </button>
+            <button id="toggleAiPartyBtn" type="button" class="gothic-btn px-2.5 py-1 rounded-lg font-bold text-amber-300">
+              🤖 召喚 3 位 AI 共鬥隊友（單人預覽多人效果）
+            </button>
+          </div>
         </div>
         <div id="mpPlayerListBox" class="grid grid-cols-1 sm:grid-cols-2 gap-1.5 pt-1 max-h-36 overflow-y-auto"></div>
       </div>
@@ -4419,8 +4447,15 @@
       return cg;
     }
 
-    function loadMineFloor(floorNum, spawnAtDownStairs = false) {
+    let currentFloorBlueprint = null;
+    const floorChestsMap = new Map();
+    const floorKilledIds = new Set();
+
+    function loadMineFloor(floorNum, spawnAtDownStairs = false, remoteBlueprint = null) {
+      floorNum = Number(floorNum) || 1;
       clearWorld();
+      floorChestsMap.clear();
+      floorKilledIds.clear();
       enemyProjectiles = [];
       portalCooldown = 1.35;
       currentFloor = floorNum;
@@ -4462,54 +4497,12 @@
         return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
       };
 
-      const targetRooms = Math.min(18, 8 + Math.floor(floorNum / 7));
       const rooms = [];
-      let attempts = 0;
-      while (rooms.length < targetRooms && attempts < 140) {
-        attempts++;
-        const halfW = (rooms.length === targetRooms - 1 && floorNum % 10 === 0) ? 4 : (2 + Math.floor(floorRng() * 2));
-        const halfH = (rooms.length === targetRooms - 1 && floorNum % 10 === 0) ? 4 : (2 + Math.floor(floorRng() * 2));
-        const cx = 6 + Math.floor(floorRng() * (MAP - 12));
-        const cz = 6 + Math.floor(floorRng() * (MAP - 12));
-
-        let overlap = false;
-        for (const r of rooms) {
-          if (Math.abs(r.cx - cx) < (r.halfW + halfW + 3) && Math.abs(r.cz - cz) < (r.halfH + halfH + 3)) {
-            overlap = true;
-            break;
-          }
-        }
-        if (overlap && rooms.length > 0 && attempts < 90) continue;
-
-        for (let x = cx - halfW; x <= cx + halfW; x++) {
-          for (let z = cz - halfH; z <= cz + halfH; z++) {
-            if (x > 2 && x < MAP - 3 && z > 2 && z < MAP - 3) {
-              grid[x][z] = 0;
-            }
-          }
-        }
-        rooms.push({ cx, cz, halfW, halfH });
-      }
-
-      let maxPairDist = -1;
-      let bestEndIdx = rooms.length - 1;
-      for (let i = 1; i < rooms.length; i++) {
-        const d = Math.hypot(rooms[i].cx - rooms[0].cx, rooms[i].cz - rooms[0].cz);
-        if (d > maxPairDist) {
-          maxPairDist = d;
-          bestEndIdx = i;
-        }
-      }
-      if (bestEndIdx !== rooms.length - 1) {
-        const tmpR = rooms[rooms.length - 1];
-        rooms[rooms.length - 1] = rooms[bestEndIdx];
-        rooms[bestEndIdx] = tmpR;
-      }
-
+      const corridors = [];
       const corridorTiles = [];
-      function carveCorridor(x1, z1, x2, z2) {
+
+      function carveCorridor(x1, z1, x2, z2, horizFirst) {
         let x = x1, z = z1;
-        const horizFirst = floorRng() < 0.5;
         const stepTile = (tx, tz) => {
           if (tx > 2 && tx < MAP - 3 && tz > 2 && tz < MAP - 3) {
             if (grid[tx][tz] === 1) corridorTiles.push({ gx: tx, gz: tz });
@@ -4527,15 +4520,81 @@
         }
       }
 
-      for (let i = 1; i < rooms.length; i++) {
-        carveCorridor(rooms[i - 1].cx, rooms[i - 1].cz, rooms[i].cx, rooms[i].cz);
+      if (remoteBlueprint && Array.isArray(remoteBlueprint.rooms) && Array.isArray(remoteBlueprint.corridors)) {
+        remoteBlueprint.rooms.forEach((r) => {
+          for (let x = r.cx - r.halfW; x <= r.cx + r.halfW; x++) {
+            for (let z = r.cz - r.halfH; z <= r.cz + r.halfH; z++) {
+              if (x > 2 && x < MAP - 3 && z > 2 && z < MAP - 3) grid[x][z] = 0;
+            }
+          }
+          rooms.push({ cx: r.cx, cz: r.cz, halfW: r.halfW, halfH: r.halfH });
+        });
+        remoteBlueprint.corridors.forEach((c) => {
+          corridors.push(c);
+          carveCorridor(c.x1, c.z1, c.x2, c.z2, !!c.hf);
+        });
+        // Advance floorRng to match room/corridor consumption so monster offsets stay deterministic
+        for (let k = 0; k < 64; k++) floorRng();
+      } else {
+        const targetRooms = Math.min(18, 8 + Math.floor(floorNum / 7));
+        let attempts = 0;
+        while (rooms.length < targetRooms && attempts < 140) {
+          attempts++;
+          const halfW = (rooms.length === targetRooms - 1 && floorNum % 10 === 0) ? 4 : (2 + Math.floor(floorRng() * 2));
+          const halfH = (rooms.length === targetRooms - 1 && floorNum % 10 === 0) ? 4 : (2 + Math.floor(floorRng() * 2));
+          const cx = 6 + Math.floor(floorRng() * (MAP - 12));
+          const cz = 6 + Math.floor(floorRng() * (MAP - 12));
+
+          let overlap = false;
+          for (const r of rooms) {
+            if (Math.abs(r.cx - cx) < (r.halfW + halfW + 3) && Math.abs(r.cz - cz) < (r.halfH + halfH + 3)) {
+              overlap = true;
+              break;
+            }
+          }
+          if (overlap && rooms.length > 0 && attempts < 90) continue;
+
+          for (let x = cx - halfW; x <= cx + halfW; x++) {
+            for (let z = cz - halfH; z <= cz + halfH; z++) {
+              if (x > 2 && x < MAP - 3 && z > 2 && z < MAP - 3) {
+                grid[x][z] = 0;
+              }
+            }
+          }
+          rooms.push({ cx, cz, halfW, halfH });
+        }
+
+        let maxPairDist = -1;
+        let bestEndIdx = rooms.length - 1;
+        for (let i = 1; i < rooms.length; i++) {
+          const d = Math.hypot(rooms[i].cx - rooms[0].cx, rooms[i].cz - rooms[0].cz);
+          if (d > maxPairDist) {
+            maxPairDist = d;
+            bestEndIdx = i;
+          }
+        }
+        if (bestEndIdx !== rooms.length - 1) {
+          const tmpR = rooms[rooms.length - 1];
+          rooms[rooms.length - 1] = rooms[bestEndIdx];
+          rooms[bestEndIdx] = tmpR;
+        }
+
+        for (let i = 1; i < rooms.length; i++) {
+          const hf = floorRng() < 0.5;
+          corridors.push({ x1: rooms[i - 1].cx, z1: rooms[i - 1].cz, x2: rooms[i].cx, z2: rooms[i].cz, hf });
+          carveCorridor(rooms[i - 1].cx, rooms[i - 1].cz, rooms[i].cx, rooms[i].cz, hf);
+        }
+        for (let b = 0; b < 3; b++) {
+          const rA = rooms[Math.floor(floorRng() * rooms.length)];
+          const bx = Math.max(4, Math.min(MAP - 5, rA.cx + (floorRng() < 0.5 ? -8 : 8)));
+          const bz = Math.max(4, Math.min(MAP - 5, rA.cz + (floorRng() < 0.5 ? -8 : 8)));
+          const hf = floorRng() < 0.5;
+          corridors.push({ x1: rA.cx, z1: rA.cz, x2: bx, z2: bz, hf });
+          carveCorridor(rA.cx, rA.cz, bx, bz, hf);
+        }
       }
-      for (let b = 0; b < 3; b++) {
-        const rA = rooms[Math.floor(floorRng() * rooms.length)];
-        const bx = Math.max(4, Math.min(MAP - 5, rA.cx + (floorRng() < 0.5 ? -8 : 8)));
-        const bz = Math.max(4, Math.min(MAP - 5, rA.cz + (floorRng() < 0.5 ? -8 : 8)));
-        carveCorridor(rA.cx, rA.cz, bx, bz);
-      }
+
+      currentFloorBlueprint = { ver: 3, floor: floorNum, rooms, corridors };
 
       // Use Textured Wall & Floor Materials for this Biome (Items #1, #2, #3 of 1.2)
       const { wallMat, floorMat } = getBiomeMaterialPair(biome.propType);
@@ -4666,16 +4725,19 @@
         createHangingLantern(endPos.x - 2.6, 2.7, endPos.z - 2.0);
       }
 
+      // Reset floorSeed to a dedicated deterministic monster seed for this floor so 100% of clients generate identical monster offsets!
+      floorSeed = ((floorNum * 1597334677) ^ 0x85ebca6b) >>> 0;
+
       const floorHpMult = 4.0 * Math.pow(1.10, floorNum - 1);
       const floorDmgMult = 1.0 + (floorNum - 1) * 0.12;
       const pool = getMonsterPoolForFloor(floorNum);
 
       if (floorNum === 100) {
-        spawnEnemy('fire_dragon', endPos.x - 3.2, endPos.z + 1.5, floorHpMult * 2.2, floorDmgMult * 2.0);
-        spawnEnemy('hell_overlord', endPos.x + 2.8, endPos.z + 2.5, floorHpMult * 2.8, floorDmgMult * 2.2);
+        spawnEnemy('fire_dragon', endPos.x - 3.2, endPos.z + 1.5, floorHpMult * 2.2, floorDmgMult * 2.0, null, 'm_boss_1');
+        spawnEnemy('hell_overlord', endPos.x + 2.8, endPos.z + 2.5, floorHpMult * 2.8, floorDmgMult * 2.2, null, 'm_boss_2');
       } else if (floorNum % 10 === 0) {
         const bossAppearanceIdx = floorNum / 10;
-        spawnEnemy('boss', endPos.x, endPos.z + 2.2, floorHpMult * bossAppearanceIdx, floorDmgMult * bossAppearanceIdx);
+        spawnEnemy('boss', endPos.x, endPos.z + 2.2, floorHpMult * bossAppearanceIdx, floorDmgMult * bossAppearanceIdx, null, 'm_boss_0');
       }
 
       const baseRoomMonsters = 2 + Math.min(5, Math.floor(floorNum / 14));
@@ -4687,11 +4749,11 @@
         const count = baseRoomMonsters + (i % 2);
         for (let m = 0; m < count; m++) {
           const chosen = pool[(i + m) % pool.length];
-          const ox = (floorRng() - 0.5) * 4.2;
-          const oz = (floorRng() - 0.5) * 4.2;
+          const ox = Math.round((floorRng() - 0.5) * 40) / 10;
+          const oz = Math.round((floorRng() - 0.5) * 40) / 10;
           const sx = pos.x + ox, sz = pos.z + oz;
-          if (Math.hypot(sx - startPos.x, sz - startPos.z) < 22.0) continue;
-          spawnEnemy(chosen, sx, sz, floorHpMult, floorDmgMult);
+          if (Math.hypot(pos.x - startPos.x, pos.z - startPos.z) < 20.0) continue;
+          spawnEnemy(chosen, sx, sz, floorHpMult, floorDmgMult, null, `m_r_${i}_${m}`);
         }
 
         if (i % 2 === 1 || i === rooms.length - 1) {
@@ -4717,8 +4779,10 @@
           chestMarker.position.y = 1.15;
           chestGroup.add(chestMarker);
           worldGroup.add(chestGroup);
-          interactables.push({
+          const chestSyncId = 'c_' + i;
+          const chestInterObj = {
             type: 'chest',
+            syncId: chestSyncId,
             opened: false,
             x: cxPos,
             z: czPos,
@@ -4726,7 +4790,9 @@
             mesh: chestMarker,
             lidPivot: lidPivot,
             prompt: '🎁 開啟「地城金幣寶箱」'
-          });
+          };
+          floorChestsMap.set(chestSyncId, chestInterObj);
+          interactables.push(chestInterObj);
         }
       }
 
@@ -4738,7 +4804,7 @@
           const cw = toWorld(ct.gx, ct.gz);
           if (Math.hypot(cw.x - startPos.x, cw.z - startPos.z) >= 22.0) {
             const chosen = pool[cIdx % pool.length];
-            spawnEnemy(chosen, cw.x, cw.z, floorHpMult, floorDmgMult);
+            spawnEnemy(chosen, cw.x, cw.z, floorHpMult, floorDmgMult, null, `m_c_${cIdx}`);
           }
         }
       }
@@ -4765,7 +4831,7 @@
               prompt: `🤝 解救受困親人（完成「${q.title}」）`
             });
           } else if (q.type === 'elite') {
-            spawnEnemy(q.eliteType || 'spider', qPos.x, qPos.z, floorHpMult * 1.5, floorDmgMult * 1.4, q);
+            spawnEnemy(q.eliteType || 'spider', qPos.x, qPos.z, floorHpMult * 1.5, floorDmgMult * 1.4, q, `m_q_${q.houseIdx}`);
           }
         }
       });
@@ -4786,10 +4852,16 @@
       resetPortalGuard(player.x, player.z);
       buildHeroMesh();
       updateHudUI();
-      showToast(`🪜 進入 B${floorNum}（${getBiomeTitle(floorNum)}）！${isFloorCleared(floorNum) ? '本層已通關，迷霧已全開' : '探索迷霧尋找下一層樓梯'}`);
+      if (typeof subscribeToFloorCoopState === 'function') {
+        subscribeToFloorCoopState(floorNum);
+      }
+      if (typeof broadcastMyState === 'function') {
+        broadcastMyState(true);
+      }
+      showToast(`🪜 進入 B${floorNum}（${getBiomeTitle(floorNum)}）！${isFloorCleared(floorNum) ? '本層已通關，迷霧已全開' : '已與同房隊友同步地城地圖、怪物與寶箱'}`);
     }
 
-    function spawnEnemy(typeKey, x, z, hpMult, dmgMult = 1.0, eliteQuest = null) {
+    function spawnEnemy(typeKey, x, z, hpMult, dmgMult = 1.0, eliteQuest = null, explicitSyncId = null) {
       const base = ENEMY_TYPES[typeKey] || ENEMY_TYPES.rat;
       const isBoss = !!base.isBoss || typeKey === 'boss';
       const extraHpFactor = base.hpBonusMult || 1.0; // Item #10: Giants have 300% HP
@@ -4815,13 +4887,34 @@
       mesh.position.set(x, 0, z);
       entitiesGroup.add(mesh);
 
+      // Add a crisp 3D Overhead Health Bar so all teammates see monster HP in real time!
+      const hpBarGroup = new THREE.Group();
+      hpBarGroup.position.y = isBoss ? 2.45 : 1.72;
+      const hpBg = new THREE.Mesh(
+        new THREE.PlaneGeometry(0.92, 0.11),
+        new THREE.MeshBasicMaterial({ color: 0x111827, side: THREE.DoubleSide })
+      );
+      const hpFill = new THREE.Mesh(
+        new THREE.PlaneGeometry(0.88, 0.075),
+        new THREE.MeshBasicMaterial({ color: isBoss ? 0xf43f5e : 0xef4444, side: THREE.DoubleSide })
+      );
+      hpFill.position.z = 0.005;
+      hpBarGroup.add(hpBg, hpFill);
+      mesh.add(hpBarGroup);
+
+      const syncId = explicitSyncId || ('m_dyn_' + Date.now() + '_' + enemies.length);
       const enemyObj = {
+        syncId,
         typeKey,
         name: eliteQuest ? eliteQuest.eliteName : base.name,
         x,
         z,
+        remoteTargetX: null,
+        remoteTargetZ: null,
+        lastSyncSent: 0,
         hp: maxHp,
         maxHp,
+        hpFill,
         dmg,
         xp,
         speed: spd,
@@ -4950,12 +5043,23 @@
       }
     }
 
-    function damageEnemy(en, rawDmg, isCrit = false) {
+    function updateMonster3dHpBar(en) {
+      if (!en || !en.hpFill) return;
+      const ratio = Math.max(0.001, Math.min(1, en.hp / Math.max(1, en.maxHp)));
+      en.hpFill.scale.x = ratio;
+      en.hpFill.position.x = -(1 - ratio) * 0.44;
+    }
+
+    function damageEnemy(en, rawDmg, isCrit = false, fromRemote = false) {
       if (en.isDownedCorpse) return;
-      if (en.defReduction) {
+      if (!fromRemote && en.defReduction) {
         rawDmg = Math.max(1, Math.round(rawDmg * (1.0 - en.defReduction)));
       }
       en.hp -= rawDmg;
+      updateMonster3dHpBar(en);
+      if (!fromRemote && typeof broadcastMonsterCoopState === 'function') {
+        broadcastMonsterCoopState(en, rawDmg, isCrit);
+      }
       // Item #24: Monster immediately aggros and chases player when hit! Also alerts nearby pack!
       en.aggroed = true;
       for (const other of enemies) {
@@ -4989,6 +5093,7 @@
           spawnFloatingText(en.x, 1.5, en.z, '🧟 殭屍倒下！(15秒後再起)', '#a3e635', true);
           return;
         }
+        if (en.syncId) floorKilledIds.add(en.syncId);
         entitiesGroup.remove(en.mesh);
         enemies = enemies.filter((item) => item !== en);
         // Item #6: Monsters NO LONGER drop gold! Gold comes from Chests, Quests, or Selling Gear!
@@ -5349,6 +5454,15 @@
       document.getElementById('mpOrbFill').style.height = `${mpPct}%`;
       document.getElementById('hpOrbText').textContent = `${Math.ceil(player.hp)}/${player.maxHp}`;
       document.getElementById('mpOrbText').textContent = `${Math.ceil(player.mp)}/${player.maxMp}`;
+
+      // Low HP (< 1/3) Red Breathing Light Warning & Potion Button Highlight
+      const isLowHp = player.hp > 0 && (player.hp / Math.max(1, player.maxHp)) <= (1 / 3);
+      const lowVig = document.getElementById('lowHpBreathingVignette');
+      const lowBan = document.getElementById('lowHpDrinkBanner');
+      const hpBtnEl = document.getElementById('btnHpPot');
+      if (lowVig) lowVig.classList.toggle('hidden', !isLowHp);
+      if (lowBan) lowBan.classList.toggle('hidden', !isLowHp);
+      if (hpBtnEl) hpBtnEl.classList.toggle('low-hp-btn-pulse', isLowHp);
 
       const xpPct = Math.max(0, Math.min(100, (player.xp / player.xpNext) * 100));
       document.getElementById('xpBarFill').style.width = `${xpPct}%`;
@@ -5854,6 +5968,9 @@
         inter.opened = true;
         if (inter.lidPivot) inter.lidPivot.rotation.x = -Math.PI * 0.58;
         if (inter.mesh) inter.mesh.visible = false;
+        if (inter.syncId && typeof broadcastChestCoopState === 'function') {
+          broadcastChestCoopState(inter.syncId);
+        }
         const bonusGold = 35 + currentFloor * 22;
         player.gold += bonusGold;
         const potKey = currentFloor >= 30 ? 'hp3' : currentFloor >= 10 ? 'hp2' : 'hp1';
@@ -6199,6 +6316,9 @@
     let currentRoomId = 'village_lobby';
     let myPlayerRef = null;
     let roomPlayersRef = null;
+    let floorBlueprintRef = null;
+    let floorMonstersRef = null;
+    let floorChestsRef = null;
     let lastSyncSentTime = 0;
     let myChatMsg = '';
     let myChatExpire = 0;
@@ -6401,7 +6521,153 @@
         renderMpPlayerList();
       });
 
+      if (currentFloor >= 1) {
+        subscribeToFloorCoopState(currentFloor);
+      }
       broadcastMyState(true);
+    }
+
+    function detachFloorCoopListeners() {
+      if (floorBlueprintRef) { try { floorBlueprintRef.off(); } catch (e) {} floorBlueprintRef = null; }
+      if (floorMonstersRef) { try { floorMonstersRef.off(); } catch (e) {} floorMonstersRef = null; }
+      if (floorChestsRef) { try { floorChestsRef.off(); } catch (e) {} floorChestsRef = null; }
+    }
+
+    function subscribeToFloorCoopState(floorNum) {
+      detachFloorCoopListeners();
+      if (!fbDb || floorNum <= 0) return;
+
+      const baseFloorPath = `abyss_online/rooms/${currentRoomId}/floors/f_${floorNum}`;
+
+      // 1. Sync Floor Blueprint (Rooms, Corridors & Staircase Positions)
+      floorBlueprintRef = fbDb.ref(`${baseFloorPath}/blueprint`);
+      floorBlueprintRef.once('value', (snap) => {
+        const bp = snap.val();
+        if (!bp || bp.ver !== 3 || !Array.isArray(bp.rooms) || !Array.isArray(bp.corridors)) {
+          if (currentFloorBlueprint && currentFloorBlueprint.floor === floorNum) {
+            floorBlueprintRef.set(currentFloorBlueprint).catch(() => {});
+          }
+        } else if (currentFloor === floorNum && currentFloorBlueprint) {
+          const r0Local = currentFloorBlueprint.rooms[0];
+          const r0Remote = bp.rooms[0];
+          if (r0Local && r0Remote && (r0Local.cx !== r0Remote.cx || r0Local.cz !== r0Remote.cz || currentFloorBlueprint.rooms.length !== bp.rooms.length)) {
+            loadMineFloor(floorNum, false, bp);
+          }
+        }
+      });
+
+      // 2. Real-Time Monster Sync (Positions, HP, Missing Monster Auto-Spawn & Co-op Kills)
+      floorMonstersRef = fbDb.ref(`${baseFloorPath}/monsters`);
+      floorMonstersRef.on('value', (snap) => {
+        if (currentFloor !== floorNum) return;
+        const mMap = snap.val() || {};
+        Object.entries(mMap).forEach(([mId, mData]) => {
+          if (!mData) return;
+          // Ignore stale monster state older than 12 minutes
+          if (mData.ts && Date.now() - mData.ts > 720000) return;
+          let en = enemies.find((e) => e.syncId === mId);
+
+          if (mData.dead || (typeof mData.hp === 'number' && mData.hp <= 0)) {
+            floorKilledIds.add(mId);
+            if (!en) return;
+            entitiesGroup.remove(en.mesh);
+            enemies = enemies.filter((item) => item !== en);
+            spawnHitParticles(en.x, 1.0, en.z, 0xfbbf24, 12);
+            spawnFloatingText(en.x, 1.8, en.z, `🤝 隊友擊殺! +${Math.max(1, Math.round(en.xp * 0.8))} EXP`, '#38bdf8', true);
+            gainXP(Math.max(1, Math.round(en.xp * 0.8)));
+            if (en.isBoss) {
+              document.getElementById('bossBarContainer').classList.add('hidden');
+            }
+            if (currentFloor >= 1 && enemies.length === 0) {
+              player.clearedFloors.add(currentFloor);
+              revealEntireFloor();
+              saveHeroProfileToStorage();
+              showToast(`🎉 B${currentFloor} 魔物已全數肅清！迷霧已全面開啟`);
+            }
+          } else {
+            // If a teammate has a monster (e.g. quest elite or summoned skeleton or edge-case spawn) that we don't have yet, spawn it!
+            if (!en && !floorKilledIds.has(mId) && mData.typeKey && typeof mData.x === 'number' && typeof mData.z === 'number') {
+              const fHpM = 4.0 * Math.pow(1.10, floorNum - 1);
+              const fDmgM = 1.0 + (floorNum - 1) * 0.12;
+              spawnEnemy(mData.typeKey, mData.x, mData.z, fHpM, fDmgM, null, mId);
+              en = enemies.find((e) => e.syncId === mId);
+            }
+            if (!en) return;
+
+            if (typeof mData.hp === 'number' && mData.hp < en.hp) {
+              const diff = en.hp - mData.hp;
+              en.hp = mData.hp;
+              en.aggroed = true;
+              updateMonster3dHpBar(en);
+              if (en.isBoss) updateBossBarUI(en);
+              if (mData.hitBy !== myClientId) {
+                spawnHitParticles(en.x, 1.0, en.z, 0x38bdf8, 8);
+                spawnFloatingText(en.x, 1.75, en.z, `🤝 -${diff}`, '#38bdf8', false);
+              }
+            }
+            if (typeof mData.x === 'number' && typeof mData.z === 'number' && mData.owner && mData.owner !== myClientId) {
+              en.remoteTargetX = mData.x;
+              en.remoteTargetZ = mData.z;
+              en.remoteSyncTime = Date.now();
+              en.aggroed = true;
+            }
+          }
+        });
+      });
+
+      // 3. Real-Time Chest Sync (Co-op Chest Open & Shared Gold)
+      floorChestsRef = fbDb.ref(`${baseFloorPath}/chests`);
+      floorChestsRef.on('value', (snap) => {
+        if (currentFloor !== floorNum) return;
+        const cMap = snap.val() || {};
+        Object.entries(cMap).forEach(([cId, cData]) => {
+          if (!cData || !cData.opened) return;
+          if (cData.ts && Date.now() - cData.ts > 1200000) return;
+          const chestInter = floorChestsMap.get(cId);
+          if (chestInter && !chestInter.opened) {
+            chestInter.opened = true;
+            if (chestInter.lidPivot) chestInter.lidPivot.rotation.x = -Math.PI * 0.58;
+            if (chestInter.mesh) chestInter.mesh.visible = false;
+            interactables = interactables.filter((item) => item !== chestInter);
+            if (cData.uid && cData.uid !== myClientId) {
+              const sharedGold = 25 + currentFloor * 15;
+              player.gold += sharedGold;
+              updateHudUI();
+              spawnHitParticles(chestInter.x, 0.8, chestInter.z, 0xfbbf24, 14);
+              spawnFloatingText(chestInter.x, 1.4, chestInter.z, `🎁 隊友開箱 +${sharedGold} 金幣!`, '#fde047', true);
+              showToast(`🎁 隊友 ${cData.by || '同伴'} 開啟了寶箱！隊伍共享獲得 +${sharedGold} 金幣`);
+            }
+          }
+        });
+      });
+    }
+
+    function broadcastMonsterCoopState(en, rawDmg = 0, isCrit = false) {
+      if (!fbDb || currentFloor <= 0 || !en || !en.syncId) return;
+      const mRef = fbDb.ref(`abyss_online/rooms/${currentRoomId}/floors/f_${currentFloor}/monsters/${en.syncId}`);
+      mRef.set({
+        typeKey: en.typeKey || 'rat',
+        x: Math.round(en.x * 20) / 20,
+        z: Math.round(en.z * 20) / 20,
+        hp: Math.max(0, en.hp),
+        dead: en.hp <= 0 && !(en.revivesIn15s && !en.hasRevivedOnce),
+        lastDmg: rawDmg,
+        crit: !!isCrit,
+        hitBy: myClientId,
+        owner: myClientId,
+        ts: Date.now()
+      }).catch(() => {});
+    }
+
+    function broadcastChestCoopState(syncId) {
+      if (!fbDb || currentFloor <= 0 || !syncId) return;
+      const cRef = fbDb.ref(`abyss_online/rooms/${currentRoomId}/floors/f_${currentFloor}/chests/${syncId}`);
+      cRef.set({
+        opened: true,
+        by: myPlayerName,
+        uid: myClientId,
+        ts: Date.now()
+      }).catch(() => {});
     }
 
     function broadcastMyState(force = false) {
@@ -6442,8 +6708,24 @@
 
       remotePlayers.forEach((rp) => {
         const d = document.createElement('div');
-        d.className = 'p-2 rounded-lg bg-stone-950 border border-stone-700 flex items-center justify-between';
-        d.innerHTML = `<span class="font-bold text-sky-300">🧑‍🤝‍🧑 ${rp.name}</span><span class="text-stone-400">Lv.${rp.lv} · ${FLOOR_NAMES[rp.floor] ? FLOOR_NAMES[rp.floor].split(' ')[0] : '村莊'}</span>`;
+        d.className = 'p-2 rounded-lg bg-stone-950 border border-sky-700/60 hover:border-sky-400 cursor-pointer flex items-center justify-between gap-1 transition';
+        const flLabel = FLOOR_NAMES[rp.floor] ? FLOOR_NAMES[rp.floor].split(' ')[0] : (rp.floor > 0 ? `B${rp.floor}` : '村莊');
+        d.innerHTML = `<span class="font-bold text-sky-300">🧑‍🤝‍🧑 ${rp.name}</span><span class="text-stone-300 text-[11px]">Lv.${rp.lv} · ${flLabel} <span class="text-amber-300 underline ml-1">⚡瞬移匯合</span></span>`;
+        d.addEventListener('click', () => {
+          const targetFl = Number(rp.floor) || 0;
+          if (targetFl !== Number(currentFloor)) {
+            if (targetFl <= 0) loadMountainVillage(false);
+            else loadMineFloor(targetFl, false);
+          }
+          player.x = rp.x + 1.2;
+          player.z = rp.z + 0.8;
+          player.y = targetFl === 0 ? getVillageWalkableHeight(player.x, player.z) : 0;
+          if (playerMesh) playerMesh.position.set(player.x, player.y, player.z);
+          resetPortalGuard(player.x, player.z);
+          broadcastMyState(true);
+          document.getElementById('mpModal').classList.add('hidden');
+          showToast(`⚡ 已瞬移至隊友「${rp.name}」身邊！`);
+        });
         box.appendChild(d);
       });
 
@@ -6621,6 +6903,16 @@
       });
     });
     document.getElementById('toggleAiPartyBtn').addEventListener('click', toggleAiCompanions);
+    const openSecondTabBtnEl = document.getElementById('openSecondTabBtn');
+    if (openSecondTabBtnEl) {
+      openSecondTabBtnEl.addEventListener('click', () => {
+        const htmlContent = '<!DOCTYPE html>\n' + document.documentElement.outerHTML;
+        const blob = new Blob([htmlContent], { type: 'text/html;charset=utf-8' });
+        const blobUrl = URL.createObjectURL(blob);
+        window.open(blobUrl, '_blank');
+        showToast('🪟 已在新分頁開啟完全相同版本的第 2 個連機測試視窗！');
+      });
+    }
 
     // Casino-Lobby iframe postMessage compatibility (matching index.html / lobbyEngine.js)
     window.addEventListener('message', (event) => {
@@ -7629,19 +7921,61 @@
         if (en.flying) {
           en.mesh.position.y = Math.sin(en.phase * 1.6) * 0.18;
         }
+        // Find closest adventurer on this floor (local player OR same-floor remote teammate)
+        let targetX = player.x;
+        let targetZ = player.z;
+        let targetIsLocal = true;
+        let minAdvDist = Math.hypot(player.x - en.x, player.z - en.z);
+        remotePlayers.forEach((rp) => {
+          if (Number(rp.floor) === Number(currentFloor)) {
+            const rDist = Math.hypot(rp.x - en.x, rp.z - en.z);
+            if (rDist < minAdvDist - 0.35) {
+              minAdvDist = rDist;
+              targetX = rp.x;
+              targetZ = rp.z;
+              targetIsLocal = false;
+            }
+          }
+        });
+
         const dx = player.x - en.x;
         const dz = player.z - en.z;
         const dist = Math.hypot(dx, dz) || 0.001;
+        const tdx = targetX - en.x;
+        const tdz = targetZ - en.z;
+        const tDist = Math.hypot(tdx, tdz) || 0.001;
 
-        // Item #23 & #24: 2x Detection Range (23.0m) + Immediate Chase when Aggroed!
-        if ((dist < 23.0 || en.aggroed) && dist > 1.35) {
-          const mx = (dx / dist) * en.speed * dt;
-          const mz = (dz / dist) * en.speed * dt;
+        // Make 3D HP bar face camera
+        if (en.hpFill && en.hpFill.parent) {
+          en.hpFill.parent.rotation.y = -en.mesh.rotation.y;
+        }
+
+        // Item #23 & #24: 2x Detection Range (23.0m) + Immediate Chase when Aggroed + Co-op Position Sync!
+        if ((!targetIsLocal || (en.remoteSyncTime && Date.now() - en.remoteSyncTime < 600)) && en.remoteTargetX !== null && en.remoteTargetZ !== null) {
+          const rdx = en.remoteTargetX - en.x;
+          const rdz = en.remoteTargetZ - en.z;
+          if (Math.hypot(rdx, rdz) > 4.5) {
+            en.x = en.remoteTargetX;
+            en.z = en.remoteTargetZ;
+          } else {
+            en.x += rdx * Math.min(1, dt * 10);
+            en.z += rdz * Math.min(1, dt * 10);
+          }
+          en.mesh.position.x = en.x;
+          en.mesh.position.z = en.z;
+          en.mesh.rotation.y = Math.atan2(tdx, tdz);
+        } else if ((tDist < 23.0 || en.aggroed) && tDist > 1.35) {
+          const mx = (tdx / tDist) * en.speed * dt;
+          const mz = (tdz / tDist) * en.speed * dt;
           if (isWalkable(en.x + mx, en.z)) en.x += mx;
           if (isWalkable(en.x, en.z + mz)) en.z += mz;
           en.mesh.position.x = en.x;
           en.mesh.position.z = en.z;
-          en.mesh.rotation.y = Math.atan2(dx, dz);
+          en.mesh.rotation.y = Math.atan2(tdx, tdz);
+          if (targetIsLocal && remotePlayers.size > 0 && now - (en.lastSyncSent || 0) > 220) {
+            en.lastSyncSent = now;
+            broadcastMonsterCoopState(en, 0, false);
+          }
 
           // Special Monster Abilities Cooldown (Items #9-#12)
           en.specialCd -= dt;
