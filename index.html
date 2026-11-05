@@ -786,21 +786,36 @@
       '雷霆泰坦鎧', '星穹虛空袍鎧', '混沌龍神鎧', '永恆聖盾鎧', '不朽深淵神鎧'
     ];
 
+    // Dragon Quest Style Stat Growth & Floor Difficulty Curve (Lv.1 -> Lv.99, Gear Lv.1 -> Lv.50, B1 -> B100)
+    function calcHeroBaseAtk(lv) {
+      return Math.round(7 + lv * 3.8 + Math.pow(lv, 1.34) * 0.75);
+    }
+    function calcHeroBaseHp(lv) {
+      return Math.round(70 + lv * 26 + Math.pow(lv, 1.36) * 3.0);
+    }
+    function calcHeroBaseMp(lv) {
+      return Math.round(40 + lv * 6);
+    }
+    function calcXpNextForLevel(lv) {
+      return Math.round(22 * Math.pow(lv, 1.46) + lv * 14);
+    }
+
     const WEAPONS_DB = {
-      0: { id: 'w_0', type: 'weapon', tier: 0, name: '生鏽短劍 (Lv.0)', dmg: 5, price: 10, minFloor: 1, maxFloor: 1, icon: '🗡️', dropOnly: false }
+      0: { id: 'w_0', type: 'weapon', tier: 0, name: '生鏽短劍 (Lv.0)', dmg: 6, price: 10, minFloor: 1, maxFloor: 1, unlockFloor: 1, icon: '🗡️', dropOnly: false }
     };
     const ARMORS_DB = {
-      0: { id: 'a_0', type: 'armor', tier: 0, name: '旅人深藍戰衣 (Lv.0)', def: 0, hpBonus: 0, price: 10, minFloor: 1, maxFloor: 1, icon: '🦺', dropOnly: false }
+      0: { id: 'a_0', type: 'armor', tier: 0, name: '旅人深藍戰衣 (Lv.0)', def: 0, hpBonus: 0, price: 10, minFloor: 1, maxFloor: 1, unlockFloor: 1, icon: '🦺', dropOnly: false }
     };
 
     for (let t = 1; t <= 50; t++) {
       const matName = WEAPON_MATERIALS[Math.min(WEAPON_MATERIALS.length - 1, Math.floor((t - 1) / 2.5))];
       const formName = WEAPON_FORMS[(t - 1) % WEAPON_FORMS.length];
       const wIcons = ['🗡️', '⚔️', '🔨', '🪓', '⚜️'];
-      const dmg = Math.round(14 + t * 8 + Math.pow(t, 1.42) * 1.9);
+      const dmg = Math.round(12 + t * 13 + Math.pow(t, 1.54) * 1.55);
       const wPrice = Math.round(45 * Math.pow(1.135, t));
       const minF = t * 2 - 1;
       const maxF = t * 2;
+      const unlockFloor = Math.max(1, (t - 1) * 2);
       WEAPONS_DB[t] = {
         id: `w_${t}`,
         type: 'weapon',
@@ -810,15 +825,16 @@
         price: wPrice,
         minFloor: minF,
         maxFloor: maxF,
+        unlockFloor,
         dropOnly: t > 25,
         icon: wIcons[(t - 1) % wIcons.length],
-        desc: `Lv.${t} 武器 · 攻擊力 ${dmg} · 對應地城 B${minF}~B${maxF}`
+        desc: `Lv.${t} 武器 · 攻擊力 +${dmg} · 推薦樓層 B${minF}~B${maxF}`
       };
 
       const aMat = ARMOR_MATERIALS[Math.min(ARMOR_MATERIALS.length - 1, Math.floor((t - 1) / 2.5))];
       const aIcons = ['🦺', '🛡️', '⚜️', '👑'];
-      const def = Math.round(1 + t * 2.4 + Math.pow(t, 1.22) * 0.7);
-      const hpBonus = Math.round(20 + t * 22 + Math.pow(t, 1.32) * 4.5);
+      const def = Math.round(2 + t * 4.2 + Math.pow(t, 1.36) * 0.85);
+      const hpBonus = Math.round(25 + t * 32 + Math.pow(t, 1.44) * 4.8);
       const aPrice = Math.round(50 * Math.pow(1.135, t));
       ARMORS_DB[t] = {
         id: `a_${t}`,
@@ -830,10 +846,61 @@
         price: aPrice,
         minFloor: minF,
         maxFloor: maxF,
+        unlockFloor,
         dropOnly: t > 25,
         icon: aIcons[(t - 1) % aIcons.length],
-        desc: `Lv.${t} 防具 · 防禦 +${def} · 生命 +${hpBonus} · 對應 B${minF}~B${maxF}`
+        desc: `Lv.${t} 防具 · 防禦 +${def} · 生命 +${hpBonus} · 推薦樓層 B${minF}~B${maxF}`
       };
+    }
+
+    function getUnlockedShopTier() {
+      const df = (typeof player !== 'undefined' && player.deepestFloor) ? player.deepestFloor : 1;
+      return Math.min(25, Math.max(1, Math.floor(df / 2) + 1));
+    }
+
+    function getFloorDifficultyMeta(fl) {
+      if (fl <= 0) return { tag: '🏡 安全城鎮', party: '自由探索', recLv: 1, recGear: 1, partyNum: 1 };
+      const recLv = Math.min(99, fl);
+      const recGear = Math.min(50, Math.ceil(fl / 2));
+      if (fl <= 10) return { tag: '🟢 初階單刷區', party: '1人單刷 (1~2刀斬殺史萊姆)', recLv, recGear, partyNum: 1 };
+      if (fl <= 30) return { tag: '🟡 進階單刷區', party: '1人單刷 (需更新商店裝備)', recLv, recGear, partyNum: 1 };
+      if (fl <= 50) return { tag: '🟠 雙人共鬥區', party: '建議 2人組隊 ⚔️⚔️', recLv, recGear, partyNum: 2 };
+      if (fl <= 70) return { tag: '🔴 三人遠征區', party: '建議 3人組隊 ⚔️🏹✨', recLv, recGear, partyNum: 3 };
+      if (fl < 100) return { tag: '🟣 四人深淵區', party: '必須 4人組隊 🛡️⚔️🏹🧙', recLv, recGear, partyNum: 4 };
+      return { tag: '💀 終焉魔王決戰', party: '必須 4人滿編 + Lv.50神裝 + Lv.95+', recLv: 95, recGear: 50, partyNum: 4 };
+    }
+
+    function getFloorMonsterCurve(fl) {
+      const refLv = Math.min(99, Math.max(1, fl));
+      const refTier = fl === 1 ? 0 : Math.min(50, Math.ceil(fl / 2));
+      const refAtk = calcHeroBaseAtk(refLv) + (WEAPONS_DB[refTier]?.dmg || 6);
+      const refHp = calcHeroBaseHp(refLv) + (ARMORS_DB[refTier]?.hpBonus || 0);
+      const refDef = ARMORS_DB[refTier]?.def || 0;
+
+      let hits1P = 1.35;
+      let hpFrac = 0.07;
+      if (fl <= 10) {
+        hits1P = 1.35 + (fl - 1) * (1.45 / 9.0);      // B1: 1.35 hits (1~2 slashes!) -> B10: 2.8 hits
+        hpFrac = 0.07 + (fl - 1) * (0.03 / 9.0);
+      } else if (fl <= 30) {
+        hits1P = 3.0 + (fl - 11) * (1.5 / 19.0);      // B11..B30: 3.0 -> 4.5 hits solo
+        hpFrac = 0.105 + (fl - 11) * (0.035 / 19.0);
+      } else if (fl <= 50) {
+        hits1P = 6.2 + (fl - 31) * (2.8 / 19.0);      // B31..B50: 6.2 -> 9.0 hits solo (2P: 3.1 -> 4.5 hits)
+        hpFrac = 0.155 + (fl - 31) * (0.04 / 19.0);
+      } else if (fl <= 70) {
+        hits1P = 10.8 + (fl - 51) * (4.2 / 19.0);     // B51..B70: 10.8 -> 15.0 hits solo (3P: 3.6 -> 5.0 hits)
+        hpFrac = 0.205 + (fl - 51) * (0.045 / 19.0);
+      } else {
+        hits1P = 17.2 + (fl - 71) * (6.8 / 29.0);     // B71..B100: 17.2 -> 24.0 hits solo (4P: 4.3 -> 6.0 hits)
+        hpFrac = 0.26 + (fl - 71) * (0.06 / 29.0);
+      }
+
+      const baseMobHp = Math.max(18, Math.round(refAtk * hits1P));
+      const baseMobDmg = Math.max(5, Math.round(refDef + refHp * hpFrac));
+      const baseMobXp = Math.max(8, Math.round((calcXpNextForLevel(refLv) / (7 + Math.floor(fl / 12)))));
+      const baseMobGold = Math.max(4, Math.round((WEAPONS_DB[Math.max(1, refTier)].price / (9 + Math.floor(fl / 18)))));
+      return { baseMobHp, baseMobDmg, baseMobXp, baseMobGold };
     }
 
     // 3-Tier Red & Blue Potions (30%, 50%, 100%, max stack 99)
@@ -932,35 +999,36 @@
     ];
 
     const ENEMY_TYPES = {
-      rat:            { name: '巨型礦鼠',     hp: 24,  dmg: 8,  xp: 12,  speed: 3.2, scale: 0.95 },
-      bat:            { name: '洞穴巨蝠',     hp: 20,  dmg: 9,  xp: 13,  speed: 3.5, scale: 0.95, flying: true },
-      beetle:         { name: '鏽甲岩龜蟲',   hp: 34,  dmg: 11, xp: 16,  speed: 2.4, scale: 1.05 },
-      spider:         { name: '躍擊毒囊蛛',   hp: 30,  dmg: 13, xp: 18,  speed: 3.1, scale: 1.05, canLeap: true },
-      slime:          { name: '綠晶泥怪',     hp: 38,  dmg: 14, xp: 22,  speed: 2.3, scale: 1.08, canLeap: true },
-      miner_skeleton: { name: '腐骨礦工',     hp: 36,  dmg: 15, xp: 24,  speed: 2.9, scale: 1.02 },
-      cult_mage:      { name: '深淵火球法師', hp: 32,  dmg: 18, xp: 30,  speed: 2.6, scale: 1.05, castsFireball: true },
-      zombie:         { name: '不死屍變殭屍', hp: 42,  dmg: 19, xp: 34,  speed: 2.5, scale: 1.08, revivesIn15s: true },
-      giant:          { name: '食人窟泰坦巨人', hp: 120, dmg: 26, xp: 65, speed: 2.3, scale: 1.68, hpBonusMult: 3.0 },
-      death_knight:   { name: '黑鎧死亡騎士', hp: 68,  dmg: 32, xp: 58,  speed: 3.3, scale: 1.25, defReduction: 0.42, canLeap: true },
-      green_ghost:    { name: '綠光瞬移幽靈', hp: 52,  dmg: 30, xp: 64,  speed: 3.6, scale: 1.15, flying: true, teleports: true, castsFireball: true },
-      lich_king:      { name: '召喚巫妖王',   hp: 85,  dmg: 34, xp: 85,  speed: 2.7, scale: 1.35, summonsMinions: true, castsFireball: true },
-      lava_giant:     { name: '投石熔岩巨人', hp: 160, dmg: 42, xp: 110, speed: 2.5, scale: 1.78, throwsLavaRock: true, defReduction: 0.45 },
-      fire_dragon:    { name: '🔥 滅世噴火巨龍', hp: 420, dmg: 55, xp: 500, speed: 6.5, scale: 2.15, breathesFire: true, isBoss: true },
-      hell_overlord:  { name: '👹 終焉地獄魔王', hp: 650, dmg: 68, xp: 900, speed: 6.5, scale: 2.45, breathesFire: true, throwsLavaRock: true, isBoss: true },
-      boss:           { name: '深淵領主',     hp: 260, dmg: 28, xp: 320, speed: 6.5, scale: 1.60, isBoss: true }
+      slime:          { name: '綠晶史萊姆',   hp: 20,  dmg: 7,  xp: 12,  hpW: 0.85, dmgW: 0.85, xpW: 0.95, speed: 2.3, scale: 1.02, canLeap: true },
+      rat:            { name: '巨型礦鼠',     hp: 22,  dmg: 8,  xp: 12,  hpW: 0.92, dmgW: 0.90, xpW: 1.00, speed: 3.1, scale: 0.95 },
+      bat:            { name: '洞穴巨蝠',     hp: 20,  dmg: 9,  xp: 13,  hpW: 0.88, dmgW: 0.95, xpW: 1.00, speed: 3.4, scale: 0.95, flying: true },
+      beetle:         { name: '鏽甲岩龜蟲',   hp: 30,  dmg: 11, xp: 16,  hpW: 1.22, dmgW: 1.05, xpW: 1.15, speed: 2.4, scale: 1.05 },
+      spider:         { name: '躍擊毒囊蛛',   hp: 28,  dmg: 13, xp: 18,  hpW: 1.12, dmgW: 1.12, xpW: 1.20, speed: 3.1, scale: 1.05, canLeap: true },
+      miner_skeleton: { name: '腐骨礦工',     hp: 36,  dmg: 15, xp: 24,  hpW: 1.18, dmgW: 1.15, xpW: 1.25, speed: 2.9, scale: 1.02 },
+      cult_mage:      { name: '深淵火球法師', hp: 32,  dmg: 18, xp: 30,  hpW: 1.02, dmgW: 1.28, xpW: 1.35, speed: 2.6, scale: 1.05, castsFireball: true },
+      zombie:         { name: '不死屍變殭屍', hp: 42,  dmg: 19, xp: 34,  hpW: 1.35, dmgW: 1.20, xpW: 1.40, speed: 2.5, scale: 1.08, revivesIn15s: true },
+      giant:          { name: '食人窟泰坦巨人', hp: 120, dmg: 26, xp: 65, hpW: 2.35, dmgW: 1.42, xpW: 2.10, speed: 2.3, scale: 1.68 },
+      death_knight:   { name: '黑鎧死亡騎士', hp: 68,  dmg: 32, xp: 58,  hpW: 1.55, dmgW: 1.45, xpW: 1.75, speed: 3.3, scale: 1.25, defReduction: 0.35, canLeap: true },
+      green_ghost:    { name: '綠光瞬移幽靈', hp: 52,  dmg: 30, xp: 64,  hpW: 1.25, dmgW: 1.40, xpW: 1.80, speed: 3.6, scale: 1.15, flying: true, teleports: true, castsFireball: true },
+      lich_king:      { name: '召喚巫妖王',   hp: 85,  dmg: 34, xp: 85,  hpW: 1.75, dmgW: 1.50, xpW: 2.20, speed: 2.7, scale: 1.35, summonsMinions: true, castsFireball: true },
+      lava_giant:     { name: '投石熔岩巨人', hp: 160, dmg: 42, xp: 110, hpW: 2.50, dmgW: 1.60, xpW: 2.50, speed: 2.5, scale: 1.78, throwsLavaRock: true, defReduction: 0.38 },
+      fire_dragon:    { name: '🔥 滅世噴火巨龍', hp: 420, dmg: 55, xp: 500, hpW: 5.20, dmgW: 1.45, xpW: 8.0, speed: 6.5, scale: 2.15, breathesFire: true, isBoss: true },
+      hell_overlord:  { name: '👹 終焉地獄魔王', hp: 650, dmg: 68, xp: 900, hpW: 7.00, dmgW: 1.60, xpW: 12.0, speed: 6.5, scale: 2.45, breathesFire: true, throwsLavaRock: true, isBoss: true },
+      boss:           { name: '深淵領主',     hp: 260, dmg: 28, xp: 320, hpW: 7.80, dmgW: 1.38, xpW: 6.5, speed: 6.5, scale: 1.60, isBoss: true }
     };
 
     function getMonsterPoolForFloor(fl) {
-      if (fl <= 10) return ['rat', 'bat', 'beetle', 'spider'];
-      if (fl <= 20) return ['miner_skeleton', 'spider', 'beetle', 'bat'];
-      if (fl <= 30) return ['slime', 'spider', 'miner_skeleton'];
-      if (fl <= 40) return ['cult_mage', 'slime', 'spider', 'miner_skeleton'];
-      if (fl <= 50) return ['zombie', 'cult_mage', 'miner_skeleton'];
-      if (fl <= 60) return ['giant', 'zombie', 'cult_mage', 'spider'];
-      if (fl <= 70) return ['death_knight', 'giant', 'zombie', 'cult_mage'];
-      if (fl <= 80) return ['green_ghost', 'death_knight', 'giant', 'zombie'];
-      if (fl <= 90) return ['lich_king', 'green_ghost', 'death_knight', 'giant'];
-      return ['lava_giant', 'lich_king', 'green_ghost', 'death_knight'];
+      if (fl <= 5)  return ['slime', 'rat', 'bat'];
+      if (fl <= 10) return ['slime', 'rat', 'bat', 'beetle'];
+      if (fl <= 20) return ['spider', 'miner_skeleton', 'beetle', 'slime'];
+      if (fl <= 30) return ['miner_skeleton', 'spider', 'cult_mage', 'slime'];
+      if (fl <= 40) return ['cult_mage', 'zombie', 'miner_skeleton', 'spider'];
+      if (fl <= 50) return ['zombie', 'cult_mage', 'giant', 'miner_skeleton'];
+      if (fl <= 60) return ['giant', 'death_knight', 'zombie', 'cult_mage'];
+      if (fl <= 70) return ['death_knight', 'giant', 'green_ghost', 'cult_mage'];
+      if (fl <= 80) return ['green_ghost', 'death_knight', 'lich_king', 'giant'];
+      if (fl <= 90) return ['lich_king', 'lava_giant', 'green_ghost', 'death_knight'];
+      return ['lava_giant', 'lich_king', 'death_knight', 'green_ghost'];
     }
 
     // =========================================================================
@@ -1379,23 +1447,23 @@
       avatarId: 'wanderer_m',
       level: 1,
       xp: 0,
-      xpNext: 25,
-      baseMaxHp: 65,
-      baseMaxMp: 45,
-      hp: 65,
-      maxHp: 65,
-      mp: 45,
-      maxMp: 45,
+      xpNext: calcXpNextForLevel(1),
+      baseMaxHp: calcHeroBaseHp(1),
+      baseMaxMp: calcHeroBaseMp(1),
+      hp: calcHeroBaseHp(1),
+      maxHp: calcHeroBaseHp(1),
+      mp: calcHeroBaseMp(1),
+      maxMp: calcHeroBaseMp(1),
       weaponId: 'w_0',
       weaponName: '生鏽短劍 (Lv.0)',
-      weaponDmg: 5,
+      weaponDmg: WEAPONS_DB[0].dmg,
       weaponTier: 0,
       armorId: 'a_0',
       armorName: '旅人深藍戰衣 (Lv.0)',
       armorDef: 0,
       armorHp: 0,
       armorTier: 0,
-      levelBonus: 0,
+      levelBonus: calcHeroBaseAtk(1),
       gold: 60,
       potions: { hp1: 2, hp2: 0, hp3: 0, mp1: 1, mp2: 0, mp3: 0 },
       activeHpTier: 1,
@@ -1449,6 +1517,18 @@
 
     function recalcPlayerMaxStats(healFull = false) {
       const spec = getClassSpec();
+      const lv = Math.min(99, Math.max(1, player.level || 1));
+      player.baseMaxHp = calcHeroBaseHp(lv);
+      player.baseMaxMp = calcHeroBaseMp(lv);
+      player.levelBonus = calcHeroBaseAtk(lv);
+      player.xpNext = calcXpNextForLevel(lv);
+      if (WEAPONS_DB[player.weaponTier]) {
+        player.weaponDmg = WEAPONS_DB[player.weaponTier].dmg;
+      }
+      if (ARMORS_DB[player.armorTier]) {
+        player.armorDef = ARMORS_DB[player.armorTier].def;
+        player.armorHp = ARMORS_DB[player.armorTier].hpBonus;
+      }
       player.maxHp = Math.round((player.baseMaxHp + player.armorHp) * spec.hpMult);
       player.maxMp = player.baseMaxMp;
       if (healFull) {
@@ -4497,10 +4577,14 @@
       currentFloor = floorNum;
       syncBgmPlayback();
 
-      // Mark previous floors as cleared when advancing deeper!
-      if (floorNum > player.deepestFloor) {
+      // Mark previous floors as cleared when advancing deeper & check for newly unlocked Shop Gear Tier!
+      let newlyUnlockedTier = 0;
+      if (floorNum > (player.deepestFloor || 1)) {
+        const prevTier = getUnlockedShopTier();
         for (let f = 1; f < floorNum; f++) player.clearedFloors.add(f);
         player.deepestFloor = floorNum;
+        const nextTier = getUnlockedShopTier();
+        if (nextTier > prevTier) newlyUnlockedTier = nextTier;
         saveHeroProfileToStorage();
       }
 
@@ -4514,7 +4598,8 @@
       hemiLight.color.setHex(floorNum >= 71 ? 0x7f1d1d : 0x475569);
       hemiLight.intensity = 0.65;
 
-      document.getElementById('locationLabel').textContent = getFloorName(floorNum);
+      const diffMeta = getFloorDifficultyMeta(floorNum);
+      document.getElementById('locationLabel').textContent = `${getFloorName(floorNum)} ｜ ${diffMeta.party} (推薦 Lv.${diffMeta.recLv} / 裝備 Lv.${diffMeta.recGear})`;
       document.getElementById('bossBarContainer').classList.add('hidden');
       if (floorNum < MAX_FLOOR) {
         document.getElementById('stairCompassBadge').classList.remove('hidden');
@@ -4895,18 +4980,20 @@
       if (typeof broadcastMyState === 'function') {
         broadcastMyState(true);
       }
-      showToast(`🪜 進入 B${floorNum}（${getBiomeTitle(floorNum)}）！${isFloorCleared(floorNum) ? '本層已通關，迷霧已全開' : '已與同房隊友同步地城地圖、怪物與寶箱'}`);
+      const unlockMsg = newlyUnlockedTier > 0 ? ` ｜ 🔓 村莊商店已開放販售【Lv.${newlyUnlockedTier}】武器與防具！` : '';
+      showToast(`🪜 進入 B${floorNum}（${diffMeta.tag} · ${diffMeta.party}）${unlockMsg}`);
     }
 
     function spawnEnemy(typeKey, x, z, hpMult, dmgMult = 1.0, eliteQuest = null, explicitSyncId = null) {
       const base = ENEMY_TYPES[typeKey] || ENEMY_TYPES.rat;
       const isBoss = !!base.isBoss || typeKey === 'boss';
-      const extraHpFactor = base.hpBonusMult || 1.0; // Item #10: Giants have 300% HP
-      // Item #4 (1.2): Regular monsters attack +25% (0.25 * 1.25 = 0.3125), Boss base damage +75% (0.25 * 1.75 = 0.4375)!
-      const maxHp = Math.max(5, Math.round(base.hp * hpMult * extraHpFactor * 0.5));
-      const dmgScale = isBoss ? (0.25 * 1.75) : (0.25 * 1.25);
-      const dmg = Math.max(1, Math.round(base.dmg * dmgMult * dmgScale));
-      const xp = Math.round(base.xp * (1 + (currentFloor - 1) * 0.15));
+      const curve = getFloorMonsterCurve(Math.max(1, currentFloor));
+      const eliteHpBoost = eliteQuest ? 2.4 : 1.0;
+      const eliteDmgBoost = eliteQuest ? 1.28 : 1.0;
+      const maxHp = Math.max(15, Math.round(curve.baseMobHp * (base.hpW || 1.0) * eliteHpBoost));
+      const dmg = Math.max(4, Math.round(curve.baseMobDmg * (base.dmgW || 1.0) * eliteDmgBoost));
+      const xp = Math.max(6, Math.round(curve.baseMobXp * (base.xpW || 1.0) * (eliteQuest ? 2.5 : 1.0)));
+      const goldDrop = Math.max(2, Math.round(curve.baseMobGold * (base.xpW || 1.0) * (isBoss ? 5.0 : eliteQuest ? 2.5 : 1.0)));
 
       // Item #4 & #9: Boss speed equals player.speed (6.5); after Floor 10, regular monsters speed up!
       let spd = isBoss ? player.speed : base.speed;
@@ -4954,6 +5041,7 @@
         hpFill,
         dmg,
         xp,
+        goldDrop,
         speed: spd,
         atkCd: 0,
         specialCd: 2.0 + Math.random() * 2.5,
@@ -5041,19 +5129,20 @@
     }
 
     function gainXP(amount) {
+      if (player.level >= 99) {
+        player.xp = 0;
+        updateHudUI();
+        return;
+      }
       player.xp += amount;
-      while (player.xp >= player.xpNext) {
+      while (player.level < 99 && player.xp >= player.xpNext) {
         player.xp -= player.xpNext;
-        player.level += 1;
-        player.xpNext = Math.round(player.xpNext * 1.42);
-        player.baseMaxHp += 6;
-        player.baseMaxMp += 5;
-        player.levelBonus += 1;
+        player.level = Math.min(99, player.level + 1);
         recalcPlayerMaxStats(true);
         playSound('levelup');
         spawnHitParticles(player.x, player.y + 1.2, player.z, 0xfacc15, 22);
-        spawnFloatingText(player.x, player.y + 2.2, player.z, `✨ 升級! 等級 ${player.level}`, '#fde047', true);
-        showToast(`🎉 升至 等級 ${player.level}！生命與法力上限提升，狀態全滿！`);
+        spawnFloatingText(player.x, player.y + 2.2, player.z, `✨ 升級! Lv.${player.level} (攻+${player.levelBonus})`, '#fde047', true);
+        showToast(`🎉 勇者升至 Lv.${player.level}！基礎攻擊提升至 ${player.levelBonus}、生命上限提升至 ${player.maxHp}，狀態全滿！`);
       }
       saveHeroProfileToStorage();
       updateHudUI();
@@ -5133,7 +5222,10 @@
         if (en.syncId) floorKilledIds.add(en.syncId);
         entitiesGroup.remove(en.mesh);
         enemies = enemies.filter((item) => item !== en);
-        // Item #6: Monsters NO LONGER drop gold! Gold comes from Chests, Quests, or Selling Gear!
+        // Dragon Quest Reward Loop: Monsters drop Gold + XP so players can save up for newly unlocked Shop Weapons & Armors!
+        const earnedGold = en.goldDrop || Math.max(3, currentFloor * 4);
+        player.gold += earnedGold;
+        spawnFloatingText(en.x, 1.45, en.z, `+${earnedGold} 🪙 / +${en.xp} XP`, '#fde047', false);
         rollMonsterLootDrop(en);
 
         // Update Active Quest Progress (Hunt & Elite Quests)
@@ -5711,17 +5803,19 @@
       const container = document.getElementById('shopItemsContainer');
       container.innerHTML = '';
 
+      const unlockedTier = getUnlockedShopTier();
+      const maxPreviewTier = Math.min(25, unlockedTier + 4);
       if (activeShopTab === 'blacksmith') {
-        document.getElementById('shopTitle').textContent = '⚔️ 武器店 · 鐵匠 戈倫（販售 1～25 級武器）';
-        document.getElementById('shopSubtitle').textContent = '26～50 級傳奇武器僅能從地城 B51～B100 魔物掉落或向黑市購買';
-        for (let t = 1; t <= 25; t++) {
-          appendGearShopCard(container, WEAPONS_DB[t]);
+        document.getElementById('shopTitle').textContent = `⚔️ 武器店 · 鐵匠 戈倫（目前已解鎖至 Lv.${unlockedTier} 武器）`;
+        document.getElementById('shopSubtitle').textContent = `目前最高突破：B${player.deepestFloor || 1}（每再深入 2 層自動解鎖下一級武器；Lv.26～50 神裝由 B51+ 掉落或黑市交易）`;
+        for (let t = 1; t <= maxPreviewTier; t++) {
+          appendGearShopCard(container, WEAPONS_DB[t], t <= unlockedTier);
         }
       } else if (activeShopTab === 'armorer') {
-        document.getElementById('shopTitle').textContent = '🛡️ 防具店 · 甲匠 蜜拉（販售 1～25 級防具）';
-        document.getElementById('shopSubtitle').textContent = '26～50 級傳奇防具僅能從地城 B51～B100 魔物掉落或向黑市購買';
-        for (let t = 1; t <= 25; t++) {
-          appendGearShopCard(container, ARMORS_DB[t]);
+        document.getElementById('shopTitle').textContent = `🛡️ 防具店 · 甲匠 蜜拉（目前已解鎖至 Lv.${unlockedTier} 防具）`;
+        document.getElementById('shopSubtitle').textContent = `目前最高突破：B${player.deepestFloor || 1}（每再深入 2 層自動解鎖下一級防具；Lv.26～50 神裝由 B51+ 掉落或黑市交易）`;
+        for (let t = 1; t <= maxPreviewTier; t++) {
+          appendGearShopCard(container, ARMORS_DB[t], t <= unlockedTier);
         }
       } else if (activeShopTab === 'potion_shop') {
         document.getElementById('shopTitle').textContent = '🧪 藥水店 · 草藥師 漢娜（三級紅藍藥水）';
@@ -5819,6 +5913,11 @@
             </div>
           `;
           card.querySelector('button').addEventListener('click', () => {
+            const reqFl = Math.max(1, (it.tier - 2) * 2);
+            if ((player.deepestFloor || 1) < reqFl) {
+              showToast(`🔒 黑市限制：你的最高探索樓層需達 B${reqFl}（目前 B${player.deepestFloor || 1}）才能購買 Lv.${it.tier} 神裝！`);
+              return;
+            }
             if (player.gold < entry.buyPrice) {
               showToast('🪙 金幣不足以購買此件黑市神裝！');
               return;
@@ -5837,27 +5936,32 @@
       }
     }
 
-    function appendGearShopCard(container, item) {
+    function appendGearShopCard(container, item, isUnlocked = true) {
       if (!item) return;
       const isEquipped = player.weaponId === item.id || player.armorId === item.id;
       const card = document.createElement('div');
-      card.className = 'p-2.5 rounded-xl bg-stone-900/90 border border-stone-700 flex flex-col justify-between gap-1.5';
+      card.className = `p-2.5 rounded-xl ${isUnlocked ? 'bg-stone-900/90 border-stone-700' : 'bg-stone-950/70 border-stone-800 opacity-65'} border flex flex-col justify-between gap-1.5`;
+      const btnLabel = isEquipped ? '✓ 已穿戴' : (!isUnlocked ? `🔒 突破 B${item.unlockFloor} 解鎖` : '購買並裝備');
       card.innerHTML = `
         <div class="flex items-start gap-2">
-          <div class="text-xl p-1.5 rounded-lg bg-stone-950 border border-stone-700">${item.icon}</div>
+          <div class="text-xl p-1.5 rounded-lg bg-stone-950 border border-stone-700">${isUnlocked ? item.icon : '🔒'}</div>
           <div class="flex-1 min-w-0">
-            <div class="font-bold text-amber-200 text-xs sm:text-sm truncate">${item.name}</div>
+            <div class="font-bold ${isUnlocked ? 'text-amber-200' : 'text-stone-400'} text-xs sm:text-sm truncate">${item.name}</div>
             <div class="text-[11px] text-stone-400 leading-snug mt-0.5">${item.desc}</div>
           </div>
         </div>
         <div class="flex items-center justify-between pt-1 border-t border-stone-800">
           <span class="text-xs font-bold text-amber-300">🪙 ${item.price} 金幣</span>
-          <button type="button" class="gothic-btn px-2.5 py-1 rounded-lg text-xs font-bold" ${isEquipped ? 'disabled' : ''}>
-            ${isEquipped ? '✓ 已穿戴' : '購買並裝備'}
+          <button type="button" class="gothic-btn px-2.5 py-1 rounded-lg text-xs font-bold" ${(isEquipped || !isUnlocked) ? 'disabled' : ''}>
+            ${btnLabel}
           </button>
         </div>
       `;
       card.querySelector('button').addEventListener('click', () => {
+        if (!isUnlocked) {
+          showToast(`🔒 需先探索突破地城 B${item.unlockFloor} 才會開放購買「${item.name}」！`);
+          return;
+        }
         if (player.gold < item.price) {
           showToast('🪙 金幣不足！請前往地城打怪或開寶箱賺取金幣');
           return;
@@ -6994,14 +7098,14 @@
       player.avatarId = customAvatarId;
       player.level = 1;
       player.xp = 0;
-      player.xpNext = 25;
-      player.baseMaxHp = 65;
-      player.baseMaxMp = 45;
-      player.levelBonus = 0;
+      player.xpNext = calcXpNextForLevel(1);
+      player.baseMaxHp = calcHeroBaseHp(1);
+      player.baseMaxMp = calcHeroBaseMp(1);
+      player.levelBonus = calcHeroBaseAtk(1);
       player.gold = 60;
       player.weaponId = 'w_0';
       player.weaponName = '生鏽短劍 (Lv.0)';
-      player.weaponDmg = 5;
+      player.weaponDmg = WEAPONS_DB[0].dmg;
       player.weaponTier = 0;
       player.armorId = 'a_0';
       player.armorName = '旅人深藍戰衣 (Lv.0)';
