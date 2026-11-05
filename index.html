@@ -363,19 +363,26 @@
     <div id="toastText" class="gothic-panel px-3.5 py-1.5 rounded-full text-xs font-bold text-amber-200 border-amber-500/70 shadow-xl inline-block"></div>
   </div>
 
-  <!-- Bottom HUD (Exact layout from user's image_a6b621.png mockup!) -->
+  <!-- Bottom HUD (Exact layout from user's UI示意圖.jpg!) -->
   <div id="bottomHud" class="fixed inset-x-0 bottom-0 z-30 p-2 sm:p-3 pointer-events-none flex items-end justify-between">
-    <!-- Bottom-Left: Attack & Fireball stacked vertically right above the Red HP Orb -->
-    <div class="flex flex-col items-center gap-1.5 pointer-events-auto">
-      <button id="btnAttack" type="button" class="gothic-btn w-14 h-14 sm:w-16 sm:h-16 rounded-xl flex flex-col items-center justify-center shadow-lg">
-        <span class="text-lg sm:text-xl leading-none">⚔️</span>
-        <span class="text-[10px] font-bold mt-0.5">揮砍 (空白)</span>
-      </button>
-      <button id="btnFireball" type="button" class="gothic-btn w-14 h-14 sm:w-16 sm:h-16 rounded-xl flex flex-col items-center justify-center shadow-lg">
-        <span class="text-lg sm:text-xl leading-none">🔥</span>
-        <span class="text-[10px] font-bold mt-0.5">火球 (E)</span>
-        <span class="text-[9px] text-sky-300 leading-none">10 MP</span>
-      </button>
+    <!-- Bottom-Left: [揮劍(左鍵) + 火球(右鍵)] side-by-side -> Left Camera Circle (視角) -> Red HP Orb -->
+    <div class="flex flex-col items-start gap-2 pointer-events-auto">
+      <div class="flex items-center gap-1.5">
+        <button id="btnAttack" type="button" class="gothic-btn w-14 h-14 sm:w-16 sm:h-16 rounded-2xl flex flex-col items-center justify-center shadow-lg">
+          <span class="text-lg sm:text-xl leading-none">⚔️</span>
+          <span class="text-[10px] font-bold mt-0.5">揮砍 (空白)</span>
+        </button>
+        <button id="btnFireball" type="button" class="gothic-btn w-14 h-14 sm:w-16 sm:h-16 rounded-2xl flex flex-col items-center justify-center shadow-lg">
+          <span class="text-lg sm:text-xl leading-none">🔥</span>
+          <span class="text-[10px] font-bold mt-0.5">火球 (E)</span>
+          <span class="text-[9px] text-sky-300 leading-none">10 MP</span>
+        </button>
+      </div>
+      <!-- Left Analog Circle: Camera Angle Control (左下圓圈控制視角) -->
+      <div id="camStickZone" class="w-16 h-16 sm:w-[72px] sm:h-[72px] ml-1 rounded-full bg-stone-950/85 border-2 border-amber-500/75 shadow-[inset_0_2px_10px_rgba(0,0,0,0.85),0_4px_14px_rgba(0,0,0,0.65)] relative flex items-center justify-center touch-none select-none cursor-grab active:cursor-grabbing">
+        <div class="w-12 h-12 sm:w-14 sm:h-14 rounded-full border border-amber-500/25 pointer-events-none"></div>
+        <div id="camStickKnob" class="w-7 h-7 sm:w-8 sm:h-8 rounded-full bg-gradient-to-b from-amber-500/45 to-stone-800/90 border border-amber-300/90 shadow-md pointer-events-none flex items-center justify-center text-[9px] text-amber-200 font-bold">視角</div>
+      </div>
       <div class="orb-shell mt-0.5">
         <div id="hpOrbFill" class="orb-fill-hp" style="height: 100%;"></div>
         <div class="orb-shine"></div>
@@ -386,7 +393,7 @@
       </div>
     </div>
 
-    <!-- Bottom-Center: Compact 2-Button Potion Dock + Thin EXP Bar -->
+    <!-- Bottom-Center: Compact 3-Button Potion/Portal Dock + Thin EXP Bar -->
     <div class="gothic-panel p-1.5 sm:p-2 rounded-2xl flex flex-col gap-1.5 pointer-events-auto mb-0.5">
       <div class="w-28 sm:w-36 h-1.5 bg-stone-950 rounded-full overflow-hidden border border-stone-700/80">
         <div id="xpBarFill" class="h-full bg-gradient-to-r from-amber-600 via-yellow-500 to-amber-300 transition-all duration-200" style="width: 0%;"></div>
@@ -410,20 +417,24 @@
       </div>
     </div>
 
-    <!-- Bottom-Right: Always-Visible Cross D-Pad stacked above the Blue MP Orb -->
-    <div class="flex flex-col items-end gap-1.5 pointer-events-auto">
-      <div class="grid grid-cols-3 gap-1 w-28 h-28 sm:w-32 sm:h-32 p-1 rounded-2xl bg-stone-950/65 border border-stone-700/70 backdrop-blur-sm">
-        <div></div>
-        <button id="dpadUp" type="button" class="gothic-btn rounded-lg flex items-center justify-center text-sm font-bold active:scale-95">▲</button>
-        <div></div>
-        <button id="dpadLeft" type="button" class="gothic-btn rounded-lg flex items-center justify-center text-sm font-bold active:scale-95">◀</button>
-        <button id="dpadAction" type="button" class="gothic-btn rounded-lg flex items-center justify-center text-xs font-bold text-amber-300 active:scale-95">F</button>
-        <button id="dpadRight" type="button" class="gothic-btn rounded-lg flex items-center justify-center text-sm font-bold active:scale-95">▶</button>
-        <div></div>
-        <button id="dpadDown" type="button" class="gothic-btn rounded-lg flex items-center justify-center text-sm font-bold active:scale-95">▼</button>
-        <div></div>
+    <!-- Bottom-Right: Standalone Enlarged [F] Button -> Right Movement Circle (移動) -> Blue MP Orb -->
+    <div class="flex flex-col items-end gap-2 pointer-events-auto">
+      <button id="dpadAction" type="button" title="互動 (F)" class="gothic-btn w-16 h-16 sm:w-[68px] sm:h-[68px] mr-0.5 rounded-2xl border-2 border-amber-500/85 bg-stone-950/90 shadow-xl flex flex-col items-center justify-center active:scale-95">
+        <span class="text-2xl sm:text-3xl font-serif font-bold text-amber-300 leading-none">F</span>
+      </button>
+      <!-- Right Analog Circle: 360-Degree Movement Control (右下圓圈控制前後左右移動) -->
+      <div id="moveStickZone" class="w-16 h-16 sm:w-[72px] sm:h-[72px] mr-1 rounded-full bg-stone-950/85 border-2 border-amber-500/75 shadow-[inset_0_2px_10px_rgba(0,0,0,0.85),0_4px_14px_rgba(0,0,0,0.65)] relative flex items-center justify-center touch-none select-none cursor-grab active:cursor-grabbing">
+        <div class="w-12 h-12 sm:w-14 sm:h-14 rounded-full border border-amber-500/25 pointer-events-none"></div>
+        <div id="moveStickKnob" class="w-7 h-7 sm:w-8 sm:h-8 rounded-full bg-gradient-to-b from-amber-500/45 to-stone-800/90 border border-amber-300/90 shadow-md pointer-events-none flex items-center justify-center text-[9px] text-amber-200 font-bold">移動</div>
       </div>
-      <div class="orb-shell">
+      <!-- Keep legacy D-Pad IDs hidden for DOM compatibility -->
+      <div class="hidden">
+        <button id="dpadUp" type="button">▲</button>
+        <button id="dpadDown" type="button">▼</button>
+        <button id="dpadLeft" type="button">◀</button>
+        <button id="dpadRight" type="button">▶</button>
+      </div>
+      <div class="orb-shell mt-0.5">
         <div id="mpOrbFill" class="orb-fill-mp" style="height: 100%;"></div>
         <div class="orb-shine"></div>
         <div class="absolute inset-0 flex flex-col items-center justify-center text-center">
@@ -641,14 +652,24 @@
         </div>
 
         <div class="p-3 rounded-xl bg-stone-900/90 border border-stone-700 space-y-2">
-          <label for="mpRoomSelect" class="block text-amber-300 font-bold">🏰 切換連線頻道（分流架構）</label>
+          <div class="flex items-center justify-between">
+            <label for="mpRoomSelect" class="block text-amber-300 font-bold">🏰 頻道分流（下礦坑自動 4 人一房）</label>
+            <button id="mpAutoMatchModeBtn" type="button" class="text-[11px] px-2 py-0.5 rounded bg-emerald-950/90 text-emerald-300 border border-emerald-600/60 hover:bg-emerald-900">🔄 自動分流模式</button>
+          </div>
           <select id="mpRoomSelect" class="w-full bg-stone-950 border border-stone-700 rounded-lg px-2.5 py-1.5 text-amber-100 focus:outline-none focus:border-amber-400">
-            <option value="village_lobby">🏞️ 公開山谷大廳 (上限 20 人)</option>
-            <option value="party_101">⚔️ 礦坑共鬥 101 房 (建議 4 人)</option>
-            <option value="party_102">⚔️ 礦坑共鬥 102 房 (建議 4 人)</option>
-            <option value="party_vip">👑 VIP 菁英討伐房 (建議 4 人)</option>
+            <option value="village_lobby">🏞️ 公開山谷大廳 (村莊預設)</option>
+            <option value="party_101">⚔️ 礦坑共鬥 101 房 (第 1~4 人)</option>
+            <option value="party_102">⚔️ 礦坑共鬥 102 房 (第 5~8 人)</option>
+            <option value="party_103">⚔️ 礦坑共鬥 103 房 (第 9~12 人)</option>
           </select>
-          <div class="text-[11px] text-stone-400">採用 150ms (6.6Hz) 節流上傳 + 60FPS Lerp 補間動畫，支援 <code>onDisconnect()</code> 斷線自動清除。</div>
+          <div class="pt-1 border-t border-stone-800 space-y-1.5">
+            <label for="mpCustomRoomInput" class="block text-sky-300 font-bold">🔑 與朋友同玩（自訂專屬房間名稱）</label>
+            <div class="flex gap-1.5">
+              <input id="mpCustomRoomInput" type="text" maxlength="18" placeholder="輸入相同房名，如：888、阿凱團" class="flex-1 bg-stone-950 border border-stone-700 rounded-lg px-2.5 py-1.5 text-stone-100 focus:outline-none focus:border-sky-400" />
+              <button id="mpJoinCustomRoomBtn" type="button" class="gothic-btn px-3 py-1.5 rounded-lg font-bold text-sky-200 whitespace-nowrap">🚪 加入房</button>
+            </div>
+            <div id="mpRoomRuleHint" class="text-[11px] text-stone-400">預設：村莊在「公開山谷大廳」，進礦坑自動依人數排入 101、102 房（每房 4 人滿額開新房）；打相同自訂房名即可與朋友同房！</div>
+          </div>
         </div>
       </div>
 
@@ -3778,6 +3799,106 @@
       ];
       houseConfigs.forEach((cfg, idx) => buildFullTudorHouse(cfg, idx));
 
+      // 6B. Prominent Grand Village Inn (🏨 晨曦大旅店 INN) right on the Main East Plaza Road at (11.5, -6.2)
+      const innX = 11.5, innZ = -6.2, innY = getVillageTerrainHeight(innX, innZ);
+      layPathSegment(11.5, 2.0, 11.5, -2.5, 1.5);
+      solidColliders.push({ x: innX, z: innZ, r: 3.45 });
+      const innGroup = new THREE.Group();
+      innGroup.position.set(innX, innY, innZ);
+
+      // Foundation & 2-Story Half-Timbered Tavern Hall (8.0m wide x 5.4m deep)
+      const innFound = new THREE.Mesh(new THREE.BoxGeometry(8.2, 2.4, 5.6), sharedMats.stoneBase);
+      innFound.position.y = 0.0;
+      const innWall1 = new THREE.Mesh(new THREE.BoxGeometry(7.8, 3.3, 5.2), sharedMats.plaster);
+      innWall1.position.y = 1.65;
+      innWall1.castShadow = true;
+      innWall1.receiveShadow = true;
+      const innWall2 = new THREE.Mesh(new THREE.BoxGeometry(8.2, 3.0, 5.6), sharedMats.plaster);
+      innWall2.position.y = 4.8;
+      innWall2.castShadow = true;
+      innGroup.add(innFound, innWall1, innWall2);
+
+      // Warm Timber Framing & Golden Roof Trim
+      [0.12, 3.25, 6.25].forEach((by) => {
+        const belt = new THREE.Mesh(new THREE.BoxGeometry(8.35, 0.22, 5.75), sharedMats.woodDark);
+        belt.position.y = by;
+        innGroup.add(belt);
+      });
+      const innRoofMat = new THREE.MeshStandardMaterial({ color: 0x991b1b, roughness: 0.65, flatShading: true });
+      const innRoof = new THREE.Mesh(new THREE.ConeGeometry(5.8, 3.4, 4), innRoofMat);
+      innRoof.position.y = 7.95;
+      innRoof.rotation.y = Math.PI / 4;
+      innRoof.scale.set(1.18, 1.0, 0.88);
+      innRoof.castShadow = true;
+      innGroup.add(innRoof);
+
+      // Open Inviting Front Doorway + Crimson & Gold Awning + Welcome Carpet
+      const innDoorFrame = new THREE.Mesh(new THREE.BoxGeometry(2.1, 2.65, 0.28), sharedMats.woodDark);
+      innDoorFrame.position.set(0, 1.35, 2.62);
+      const innOpenInteriorGlow = new THREE.Mesh(
+        new THREE.BoxGeometry(1.65, 2.42, 0.32),
+        new THREE.MeshBasicMaterial({ color: 0x451a03 })
+      );
+      innOpenInteriorGlow.position.set(0, 1.28, 2.63);
+      const innAwning = new THREE.Mesh(
+        new THREE.BoxGeometry(3.8, 0.22, 1.45),
+        new THREE.MeshStandardMaterial({ color: 0xb91c1c, roughness: 0.6 })
+      );
+      innAwning.position.set(0, 2.95, 3.18);
+      innAwning.rotation.x = 0.22;
+      const innCarpet = new THREE.Mesh(
+        new THREE.BoxGeometry(2.0, 0.06, 2.2),
+        new THREE.MeshStandardMaterial({ color: 0xdc2626, roughness: 0.85 })
+      );
+      innCarpet.position.set(0, 0.04, 3.4);
+      innGroup.add(innDoorFrame, innOpenInteriorGlow, innAwning, innCarpet);
+
+      // Warm Glowing Windows & Twin Entrance Lanterns
+      [-2.4, 2.4].forEach((wx) => {
+        const win1 = new THREE.Mesh(new THREE.BoxGeometry(1.15, 1.15, 0.16), sharedMats.windowLit);
+        win1.position.set(wx, 1.75, 2.62);
+        const win2 = new THREE.Mesh(new THREE.BoxGeometry(1.15, 1.15, 0.16), sharedMats.windowLit);
+        win2.position.set(wx, 4.75, 2.82);
+        const lant = new THREE.Mesh(new THREE.BoxGeometry(0.36, 0.48, 0.36), sharedMats.lanternGlow);
+        lant.position.set(wx * 0.58, 2.35, 2.88);
+        innGroup.add(win1, win2, lant);
+      });
+      const innLight = new THREE.PointLight(0xffb703, 2.0, 14);
+      innLight.position.set(0, 3.2, 3.6);
+      innGroup.add(innLight);
+
+      // Eye-Catching Floating 3D Signboard above the Inn
+      const innSign = createFloatingSign('🏨 晨曦大旅店 INN · 櫃台/床鋪休息 (回血回魔)', '#f59e0b', '#fef08a');
+      innSign.position.set(0, 6.9, 3.1);
+      innSign.scale.setScalar(1.22);
+      innGroup.add(innSign);
+
+      worldGroup.add(innGroup);
+
+      const innDoorWorldX = innX;
+      const innDoorWorldZ = innZ + 3.25;
+      const innExitWorldX = innX;
+      const innExitWorldZ = innZ + 4.65;
+      const innMarker = new THREE.Mesh(
+        new THREE.OctahedronGeometry(0.20, 0),
+        new THREE.MeshBasicMaterial({ color: 0xfbbf24 })
+      );
+      innMarker.position.set(innDoorWorldX, getVillageWalkableHeight(innDoorWorldX, innDoorWorldZ) + 1.25, innDoorWorldZ);
+      worldGroup.add(innMarker);
+
+      interactables.push({
+        type: 'inn_door',
+        autoEnter: true,
+        x: innDoorWorldX,
+        z: innDoorWorldZ,
+        exitX: innExitWorldX,
+        exitZ: innExitWorldZ,
+        exitRotY: 0,
+        radius: 1.85,
+        mesh: innMarker,
+        prompt: '🏨 走進「晨曦大旅店」（內有櫃台與舒適床鋪，付 20🪙 回滿 HP / MP）'
+      });
+
       // 7. Blacksmith Goren's Open-Air Forge & Anvil Stall + Armorer Mira's Pavilion
       const smithX = 28.5, smithZ = -2.5, smithY = getVillageTerrainHeight(smithX, smithZ);
       const forgeGroup = new THREE.Group();
@@ -4122,6 +4243,13 @@
       player.y = getVillageWalkableHeight(player.x, player.z);
       resetPortalGuard(player.x, player.z);
       buildHeroMesh();
+      if (typeof detachFloorCoopListeners === 'function') {
+        detachFloorCoopListeners();
+      }
+      if (typeof mpRoomMode !== 'undefined' && mpRoomMode === 'auto' && currentRoomId !== 'village_lobby') {
+        ensureRoomOptionInSelect('village_lobby', '🏞️ 公開山谷大廳 (村莊預設)');
+        connectToMultiplayerRoom('village_lobby');
+      }
       showToast(spawnAtMineGate
         ? '⛏️ 已抵達村莊北方「山谷礦坑洞口」！按 F 或走近階梯即可進入 B1'
         : '🏔️ 歡迎來到完整版「阿爾卑斯山中小村莊」！可漫步過木拱橋、欣賞雙層都鐸木屋，或沿北側石板路前往礦坑');
@@ -4300,6 +4428,221 @@
       resetPortalGuard(player.x, player.z);
       buildHeroMesh();
       showToast(`🏠 進入第 ${houseIdx + 1} 號屋！靠近 ${qData.npcName} 可接取或回報委託任務，走向門口即可自動離開`);
+    }
+
+    // Build 3D Village Inn Interior with Reception Counter (櫃台), Innkeeper NPC & Cozy Beds (床鋪) to Pay Small Gold for Full HP/MP!
+    const INN_REST_COST = 20;
+    function restAtVillageInn(sourceLabel = '旅店舒適大床') {
+      if (player.hp >= player.maxHp && player.mp >= player.maxMp) {
+        playSound('potion');
+        showToast('✨ 你的生命與法力目前已經是全滿狀態，精神飽滿！');
+        openDialogue('旅店老闆娘 艾琳', '晨曦大旅店掌櫃', '🏨', [
+          '「客官，您看起來氣色極佳、生命與法力都已經是全滿狀態囉！隨時歡迎回來歇腳！」'
+        ]);
+        return;
+      }
+      const fee = Math.min(player.gold, INN_REST_COST);
+      if (player.gold < INN_REST_COST && player.gold > 0) {
+        player.gold = 0;
+      } else if (player.gold >= INN_REST_COST) {
+        player.gold -= INN_REST_COST;
+      }
+      player.hp = player.maxHp;
+      player.mp = player.maxMp;
+      playSound('levelup');
+      spawnHitParticles(player.x, player.y + 1.1, player.z, 0xfacc15, 22);
+      spawnHitParticles(player.x, player.y + 1.3, player.z, 0x4ade80, 18);
+      spawnFloatingText(player.x, player.y + 2.0, player.z, `🛏️ 旅店休息！HP & MP 100% 全滿 (-${fee}🪙)`, '#4ade80', true);
+      saveHeroProfileToStorage();
+      updateHudUI();
+      showToast(`🛏️ 在【${sourceLabel}】溫暖休息片刻（花費 ${fee} 金幣），生命與法力已 100% 完全恢復！`);
+    }
+
+    function loadInnInterior() {
+      clearWorld();
+      portalCooldown = 1.3;
+      currentFloor = -99;
+      syncBgmPlayback();
+      scene.background.setHex(0x160f0a);
+      scene.fog.color.setHex(0x160f0a);
+      scene.fog.density = 0.014;
+      dirLight.color.setHex(0xffcf91);
+      dirLight.intensity = 0.92;
+      hemiLight.color.setHex(0xffe8b8);
+      hemiLight.intensity = 0.82;
+
+      document.getElementById('locationLabel').textContent = '🏨 晨曦大旅店 · 服務櫃台與客房';
+      document.getElementById('bossBarContainer').classList.add('hidden');
+      document.getElementById('stairCompassBadge').classList.add('hidden');
+
+      const roomGroup = new THREE.Group();
+
+      // 1. Warm Oak Plank Floor (11.2m x 11.2m) & Plush Crimson/Gold Rugs
+      const floorMesh = new THREE.Mesh(new THREE.BoxGeometry(11.2, 0.25, 11.2), sharedMats.woodWarm);
+      floorMesh.position.y = -0.12;
+      floorMesh.receiveShadow = true;
+      const lobbyRug = new THREE.Mesh(
+        new THREE.BoxGeometry(4.4, 0.05, 5.2),
+        new THREE.MeshStandardMaterial({ color: 0x991b1b, roughness: 0.85 })
+      );
+      lobbyRug.position.set(-2.0, 0.03, 0.2);
+      const bedRug = new THREE.Mesh(
+        new THREE.BoxGeometry(4.6, 0.05, 7.6),
+        new THREE.MeshStandardMaterial({ color: 0x7c2d12, roughness: 0.85 })
+      );
+      bedRug.position.set(2.4, 0.03, -0.6);
+      roomGroup.add(floorMesh, lobbyRug, bedRug);
+
+      // 2. Interior Plaster & Timber Walls + Stone Hearth Fireplace on North Wall
+      const wallBack = new THREE.Mesh(new THREE.BoxGeometry(11.2, 4.4, 0.35), sharedMats.plaster);
+      wallBack.position.set(0, 2.2, -5.4);
+      const wallLeft = new THREE.Mesh(new THREE.BoxGeometry(0.35, 4.4, 11.2), sharedMats.plaster);
+      wallLeft.position.set(-5.4, 2.2, 0);
+      const wallRight = new THREE.Mesh(new THREE.BoxGeometry(0.35, 4.4, 11.2), sharedMats.plaster);
+      wallRight.position.set(5.4, 2.2, 0);
+      roomGroup.add(wallBack, wallLeft, wallRight);
+
+      // Cozy Fireplace on North Wall
+      const hearth = new THREE.Mesh(new THREE.BoxGeometry(2.4, 2.6, 0.9), sharedMats.stoneBase);
+      hearth.position.set(0, 1.3, -4.9);
+      const fireGlow = new THREE.Mesh(new THREE.ConeGeometry(0.42, 0.85, 7), new THREE.MeshBasicMaterial({ color: 0xff6b00 }));
+      fireGlow.position.set(0, 0.55, -4.65);
+      const hearthLight = new THREE.PointLight(0xff7b00, 1.8, 14);
+      hearthLight.position.set(0, 1.4, -4.2);
+      roomGroup.add(hearth, fireGlow, hearthLight);
+
+      // 3. LEFT SIDE: L-Shaped Wooden Reception Counter (旅館櫃台) + Bottle Shelves + Bell & Ledger
+      const counterGroup = new THREE.Group();
+      counterGroup.position.set(-2.7, 0, -1.6);
+      const frontDesk = new THREE.Mesh(new THREE.BoxGeometry(3.2, 1.08, 0.82), sharedMats.woodDark);
+      frontDesk.position.set(0, 0.54, 0.8);
+      frontDesk.castShadow = true;
+      const deskTop = new THREE.Mesh(new THREE.BoxGeometry(3.36, 0.10, 0.96), sharedMats.woodWarm);
+      deskTop.position.set(0, 1.10, 0.8);
+      const sideDesk = new THREE.Mesh(new THREE.BoxGeometry(0.82, 1.08, 2.2), sharedMats.woodDark);
+      sideDesk.position.set(-1.2, 0.54, -0.3);
+      // Guestbook Ledger & Golden Service Bell on the Counter
+      const ledger = new THREE.Mesh(new THREE.BoxGeometry(0.48, 0.06, 0.36), new THREE.MeshStandardMaterial({ color: 0xfef3c7, roughness: 0.7 }));
+      ledger.position.set(-0.35, 1.18, 0.8);
+      const bell = new THREE.Mesh(new THREE.ConeGeometry(0.14, 0.18, 12), sharedMats.goldMetal);
+      bell.position.set(0.55, 1.22, 0.8);
+      const deskLantern = new THREE.Mesh(new THREE.BoxGeometry(0.26, 0.38, 0.26), sharedMats.lanternGlow);
+      deskLantern.position.set(1.15, 1.32, 0.8);
+      // Back Shelf with Casks
+      const shelf = new THREE.Mesh(new THREE.BoxGeometry(2.8, 2.3, 0.45), sharedMats.woodDark);
+      shelf.position.set(0.1, 1.15, -1.35);
+      counterGroup.add(frontDesk, deskTop, sideDesk, ledger, bell, deskLantern, shelf);
+      roomGroup.add(counterGroup);
+
+      // Innkeeper Eileen behind the Counter
+      const { root: innNpcRoot, marker: innNpcMarker } = buildRealisticVillagerMesh('herbalist');
+      innNpcRoot.position.set(-2.6, 0, -2.15);
+      innNpcRoot.rotation.y = 0;
+      const counterSign = createOverheadSymbolSign('🛎️ 旅館櫃台 · 老闆娘艾琳 (20🪙 回滿血魔)', '#f59e0b', '#fef08a');
+      counterSign.position.y = 2.38;
+      innNpcRoot.add(counterSign);
+      entitiesGroup.add(innNpcRoot);
+
+      interactables.push({
+        type: 'inn_rest_counter',
+        x: -2.6,
+        z: -0.4,
+        radius: 2.6,
+        mesh: innNpcMarker,
+        prompt: `🛎️ 在「旅館櫃台」找老闆娘艾琳付 ${INN_REST_COST}🪙 住宿（100% 回滿 HP & MP）`
+      });
+
+      // 4. RIGHT SIDE: Two Cozy 3D Wooden Beds (舒適客房大床) with Headboards, Pillows & Quilts
+      function buildCozyInnBed(bx, bz, bedTitle) {
+        const bedG = new THREE.Group();
+        bedG.position.set(bx, 0, bz);
+        // Wooden Bed Frame & Headboard
+        const frame = new THREE.Mesh(new THREE.BoxGeometry(2.3, 0.42, 1.65), sharedMats.woodDark);
+        frame.position.y = 0.21;
+        frame.castShadow = true;
+        const headboard = new THREE.Mesh(new THREE.BoxGeometry(0.22, 1.35, 1.72), sharedMats.woodWarm);
+        headboard.position.set(1.08, 0.68, 0);
+        // White Mattress & Fluffy Pillow
+        const mattress = new THREE.Mesh(
+          new THREE.BoxGeometry(2.08, 0.24, 1.48),
+          new THREE.MeshStandardMaterial({ color: 0xf8fafc, roughness: 0.8 })
+        );
+        mattress.position.set(-0.04, 0.48, 0);
+        const pillow = new THREE.Mesh(
+          new THREE.BoxGeometry(0.45, 0.16, 1.15),
+          new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.7 })
+        );
+        pillow.position.set(0.68, 0.64, 0);
+        // Warm Crimson-Gold Quilt Blanket
+        const quilt = new THREE.Mesh(
+          new THREE.BoxGeometry(1.38, 0.27, 1.52),
+          new THREE.MeshStandardMaterial({ color: 0xdc2626, roughness: 0.75 })
+        );
+        quilt.position.set(-0.36, 0.49, 0);
+        // Bedside Nightstand & Warm Lamp
+        const stand = new THREE.Mesh(new THREE.BoxGeometry(0.55, 0.65, 0.55), sharedMats.woodDark);
+        stand.position.set(0.95, 0.32, -1.22);
+        const lamp = new THREE.Mesh(new THREE.BoxGeometry(0.24, 0.34, 0.24), sharedMats.lanternGlow);
+        lamp.position.set(0.95, 0.80, -1.22);
+
+        const bedSign = createFloatingSign(`🛏️ ${bedTitle} · 按 F 躺下回滿 HP/MP (${INN_REST_COST}🪙)`, '#38bdf8', '#e0f2fe');
+        bedSign.position.set(0, 1.95, 0);
+        bedG.add(frame, headboard, mattress, pillow, quilt, stand, lamp, bedSign);
+        roomGroup.add(bedG);
+
+        const bedMarker = new THREE.Mesh(
+          new THREE.OctahedronGeometry(0.16, 0),
+          new THREE.MeshBasicMaterial({ color: 0x38bdf8 })
+        );
+        bedMarker.position.set(bx - 0.3, 1.25, bz);
+        roomGroup.add(bedMarker);
+
+        interactables.push({
+          type: 'inn_rest_bed',
+          bedTitle,
+          x: bx - 0.3,
+          z: bz,
+          radius: 2.35,
+          mesh: bedMarker,
+          prompt: `🛏️ 躺上「${bedTitle}」休息（花費 ${INN_REST_COST}🪙 立即 100% 回滿 HP & MP）`
+        });
+      }
+
+      buildCozyInnBed(2.9, -2.2, '一號舒適大床');
+      buildCozyInnBed(2.9, 1.2, '二號舒適大床');
+
+      // 5. Warm Overhead Chandelier Light & South Exit Door back to Village
+      const roomLight = new THREE.PointLight(0xffb703, 1.85, 20);
+      roomLight.position.set(0, 3.6, 0);
+      roomGroup.add(roomLight);
+
+      const exitMat = new THREE.Mesh(
+        new THREE.BoxGeometry(2.2, 0.1, 1.0),
+        new THREE.MeshStandardMaterial({ color: 0xd97706, emissive: 0xb45309, emissiveIntensity: 0.45 })
+      );
+      exitMat.position.set(0, 0.05, 4.6);
+      const exitSign = createFloatingSign('🚪 離開晨曦大旅店返回村莊', '#38bdf8', '#e0f2fe');
+      exitSign.position.set(0, 2.3, 4.6);
+      roomGroup.add(exitMat, exitSign);
+      worldGroup.add(roomGroup);
+
+      interactables.push({
+        type: 'house_exit',
+        autoEnter: true,
+        x: 0,
+        z: 4.5,
+        radius: 1.45,
+        mesh: null,
+        prompt: '🚪 離開晨曦大旅店返回山谷村莊'
+      });
+
+      player.x = 0;
+      player.y = 0;
+      player.z = 2.6;
+      player.rotY = Math.PI;
+      resetPortalGuard(player.x, player.z);
+      buildHeroMesh();
+      showToast(`🏨 歡迎光臨「晨曦大旅店」！靠近左側【櫃台】或右側【床鋪】按 F 即可付 ${INN_REST_COST}🪙 回滿血魔`);
     }
 
     // =========================================================================
@@ -4564,14 +4907,19 @@
     }
 
     let currentFloorBlueprint = null;
+    const MONSTER_RESPAWN_MS = 3 * 60 * 1000; // 3 minutes monster respawn for 2-4 players
+    const CHEST_RESET_MS = 6 * 60 * 1000;     // 6 minutes chest reset
     const floorChestsMap = new Map();
     const floorKilledIds = new Set();
+    const floorMonsterSpawnTable = new Map();
+    let lastRespawnSweepTime = 0;
 
     function loadMineFloor(floorNum, spawnAtDownStairs = false, remoteBlueprint = null) {
       floorNum = Number(floorNum) || 1;
       clearWorld();
       floorChestsMap.clear();
       floorKilledIds.clear();
+      floorMonsterSpawnTable.clear();
       enemyProjectiles = [];
       portalCooldown = 1.35;
       currentFloor = floorNum;
@@ -4974,11 +5322,15 @@
       resetPortalGuard(player.x, player.z);
       buildHeroMesh();
       updateHudUI();
-      if (typeof subscribeToFloorCoopState === 'function') {
-        subscribeToFloorCoopState(floorNum);
-      }
-      if (typeof broadcastMyState === 'function') {
-        broadcastMyState(true);
+      if (typeof mpRoomMode !== 'undefined' && mpRoomMode === 'auto' && currentRoomId === 'village_lobby') {
+        autoAssignMinePartyRoom();
+      } else {
+        if (typeof subscribeToFloorCoopState === 'function') {
+          subscribeToFloorCoopState(floorNum);
+        }
+        if (typeof broadcastMyState === 'function') {
+          broadcastMyState(true);
+        }
       }
       const unlockMsg = newlyUnlockedTier > 0 ? ` ｜ 🔓 村莊商店已開放販售【Lv.${newlyUnlockedTier}】武器與防具！` : '';
       showToast(`🪜 進入 B${floorNum}（${diffMeta.tag} · ${diffMeta.party}）${unlockMsg}`);
@@ -5027,6 +5379,18 @@
       mesh.add(hpBarGroup);
 
       const syncId = explicitSyncId || ('m_dyn_' + Date.now() + '_' + enemies.length);
+      if (explicitSyncId && !floorMonsterSpawnTable.has(explicitSyncId)) {
+        floorMonsterSpawnTable.set(explicitSyncId, {
+          syncId: explicitSyncId,
+          typeKey,
+          x,
+          z,
+          hpMult,
+          dmgMult,
+          eliteQuest,
+          diedAt: 0
+        });
+      }
       const enemyObj = {
         syncId,
         typeKey,
@@ -5219,7 +5583,11 @@
           spawnFloatingText(en.x, 1.5, en.z, '🧟 殭屍倒下！(15秒後再起)', '#a3e635', true);
           return;
         }
-        if (en.syncId) floorKilledIds.add(en.syncId);
+        if (en.syncId) {
+          floorKilledIds.add(en.syncId);
+          const spEntry = floorMonsterSpawnTable.get(en.syncId);
+          if (spEntry) spEntry.diedAt = Date.now();
+        }
         entitiesGroup.remove(en.mesh);
         enemies = enemies.filter((item) => item !== en);
         // Dragon Quest Reward Loop: Monsters drop Gold + XP so players can save up for newly unlocked Shop Weapons & Armors!
@@ -6026,6 +6394,14 @@
       } else if (inter.type === 'town_portal_return') {
         playSound('levelup');
         loadMineFloor(inter.targetFloor || player.townPortalFloor || 1, false);
+      } else if (inter.type === 'inn_door') {
+        playSound('potion');
+        lastVillageReturnPos = { x: inter.exitX, z: inter.exitZ, rotY: inter.exitRotY };
+        loadInnInterior();
+      } else if (inter.type === 'inn_rest_counter') {
+        restAtVillageInn('旅館服務櫃台');
+      } else if (inter.type === 'inn_rest_bed') {
+        restAtVillageInn(inter.bedTitle || '旅店舒適大床');
       } else if (inter.type === 'house_door') {
         playSound('potion');
         lastVillageReturnPos = { x: inter.exitX, z: inter.exitZ, rotY: inter.exitRotY };
@@ -6107,6 +6483,7 @@
       } else if (inter.type === 'chest') {
         if (inter.opened) return;
         inter.opened = true;
+        inter.openedAt = Date.now();
         if (inter.lidPivot) inter.lidPivot.rotation.x = -Math.PI * 0.58;
         if (inter.mesh) inter.mesh.visible = false;
         if (inter.syncId && typeof broadcastChestCoopState === 'function') {
@@ -6261,7 +6638,71 @@
     bindHoldButton('dpadDown', 's');
     bindHoldButton('dpadLeft', 'a');
     bindHoldButton('dpadRight', 'd');
-    document.getElementById('dpadAction').addEventListener('click', triggerInteraction);
+
+    // Dual Virtual Analog Circles: Left = Camera Angle (#camStickZone), Right = 360 Movement (#moveStickZone)
+    const camStickVec = { x: 0, y: 0 };
+    const moveStickVec = { x: 0, y: 0 };
+
+    function bindVirtualCircleStick(zoneId, knobId, outVec, isMoveStick = false) {
+      const zone = document.getElementById(zoneId);
+      const knob = document.getElementById(knobId);
+      if (!zone || !knob) return;
+      let activePointerId = null;
+      const maxRad = 22;
+
+      function updateFromEvent(e) {
+        const rect = zone.getBoundingClientRect();
+        const cx = rect.left + rect.width * 0.5;
+        const cy = rect.top + rect.height * 0.5;
+        let dx = e.clientX - cx;
+        let dy = e.clientY - cy;
+        const dist = Math.hypot(dx, dy);
+        if (dist > maxRad) {
+          dx = (dx / dist) * maxRad;
+          dy = (dy / dist) * maxRad;
+        }
+        knob.style.transform = `translate(${dx.toFixed(1)}px, ${dy.toFixed(1)}px)`;
+        outVec.x = dx / maxRad;
+        outVec.y = dy / maxRad;
+        if (isMoveStick) moveTarget = null;
+      }
+
+      function resetStick() {
+        activePointerId = null;
+        knob.style.transform = 'translate(0px, 0px)';
+        outVec.x = 0;
+        outVec.y = 0;
+      }
+
+      zone.addEventListener('pointerdown', (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        ensureAudio();
+        activePointerId = e.pointerId;
+        try { zone.setPointerCapture(e.pointerId); } catch (err) {}
+        updateFromEvent(e);
+      });
+
+      zone.addEventListener('pointermove', (e) => {
+        if (activePointerId !== e.pointerId) return;
+        e.preventDefault();
+        e.stopPropagation();
+        updateFromEvent(e);
+      });
+
+      zone.addEventListener('pointerup', (e) => {
+        if (activePointerId !== e.pointerId) return;
+        resetStick();
+      });
+
+      zone.addEventListener('pointercancel', (e) => {
+        if (activePointerId !== e.pointerId) return;
+        resetStick();
+      });
+    }
+
+    bindVirtualCircleStick('camStickZone', 'camStickKnob', camStickVec, false);
+    bindVirtualCircleStick('moveStickZone', 'moveStickKnob', moveStickVec, true);
     document.getElementById('toggleHudMenuBtn').addEventListener('click', () => {
       const drawer = document.getElementById('hudMenuDrawer');
       drawer.classList.toggle('hidden');
@@ -6291,6 +6732,7 @@
     bindInstantActionButton('btnFireball', castFireball);
     bindInstantActionButton('btnHpPot', useHpPotion);
     bindInstantActionButton('btnMpPot', useMpPotion);
+    bindInstantActionButton('dpadAction', triggerInteraction);
     bindInstantActionButton('btnTownPortal', useTownPortal);
 
     // Lock Mobile Double-Tap & Pinch Zoom completely
@@ -6459,6 +6901,83 @@
     let myClientId = 'adv_' + Math.random().toString(36).substring(2, 9);
     let myPlayerName = '旅人' + Math.floor(100 + Math.random() * 899);
     let currentRoomId = 'village_lobby';
+    let mpRoomMode = 'auto'; // 'auto' = village_lobby in town & auto 4-player party_101/102/103... in mine; 'custom' = locked friend room
+    let customRoomTitle = '';
+
+    function getFriendlyRoomLabel(roomId = currentRoomId) {
+      if (roomId === 'village_lobby') return '🏞️ 公開山谷大廳';
+      if (roomId.startsWith('party_')) {
+        const num = roomId.replace('party_', '');
+        return `⚔️ 礦坑共鬥 ${num} 房`;
+      }
+      if (roomId.startsWith('custom_')) {
+        return `🔑 好友房【${customRoomTitle || decodeURIComponent(roomId.replace('custom_', ''))}】`;
+      }
+      return roomId;
+    }
+
+    function ensureRoomOptionInSelect(roomId, labelText) {
+      const sel = document.getElementById('mpRoomSelect');
+      if (!sel) return;
+      let opt = Array.from(sel.options).find((o) => o.value === roomId);
+      if (!opt) {
+        opt = document.createElement('option');
+        opt.value = roomId;
+        opt.textContent = labelText;
+        sel.appendChild(opt);
+      }
+      sel.value = roomId;
+    }
+
+    function autoAssignMinePartyRoom() {
+      if (mpRoomMode === 'custom') return;
+      // Already in an auto-assigned party_101 / party_102... room while descending floors
+      if (currentRoomId.startsWith('party_')) return;
+
+      if (!fbDb) {
+        ensureRoomOptionInSelect('party_101', '⚔️ 礦坑共鬥 101 房 (第 1~4 人)');
+        connectToMultiplayerRoom('party_101');
+        showToast('⚔️ 已進入「礦坑共鬥 101 房」(1/4 人)');
+        return;
+      }
+
+      fbDb.ref('abyss_online/rooms').once('value').then((snap) => {
+        if (mpRoomMode === 'custom' || currentFloor <= 0) return;
+        const roomsVal = snap.val() || {};
+        const now = Date.now();
+        let chosenNum = 101;
+        let chosenCount = 0;
+
+        for (let num = 101; num <= 199; num++) {
+          const rKey = 'party_' + num;
+          const pMap = (roomsVal[rKey] && roomsVal[rKey].players) ? roomsVal[rKey].players : {};
+          let activeOthers = 0;
+          Object.entries(pMap).forEach(([uid, pData]) => {
+            if (uid !== myClientId && pData && (!pData.ts || now - pData.ts <= 120000)) {
+              activeOthers++;
+            }
+          });
+          if (activeOthers < 4) {
+            chosenNum = num;
+            chosenCount = activeOthers + 1;
+            break;
+          }
+        }
+
+        const targetRoomId = 'party_' + chosenNum;
+        const startIdx = (chosenNum - 101) * 4 + 1;
+        ensureRoomOptionInSelect(targetRoomId, `⚔️ 礦坑共鬥 ${chosenNum} 房 (第 ${startIdx}~${startIdx + 3} 人)`);
+        connectToMultiplayerRoom(targetRoomId);
+        if (chosenCount === 1) {
+          showToast(`⚔️ 你是本房第 1 位冒險者！已自動開啟「礦坑共鬥 ${chosenNum} 房」(1/4 人)`);
+        } else {
+          showToast(`🤝 已自動配對進入「礦坑共鬥 ${chosenNum} 房」(目前 ${chosenCount}/4 人共鬥中！)`);
+        }
+      }).catch(() => {
+        ensureRoomOptionInSelect('party_101', '⚔️ 礦坑共鬥 101 房 (第 1~4 人)');
+        connectToMultiplayerRoom('party_101');
+      });
+    }
     let myPlayerRef = null;
     let roomPlayersRef = null;
     let floorBlueprintRef = null;
@@ -6708,12 +7227,28 @@
         const mMap = snap.val() || {};
         Object.entries(mMap).forEach(([mId, mData]) => {
           if (!mData) return;
-          // Ignore stale monster state older than 12 minutes
-          if (mData.ts && Date.now() - mData.ts > 720000) return;
           let en = enemies.find((e) => e.syncId === mId);
+
+          // 3-Minute Monster Respawn Rule: If monster died >= 3 minutes ago, clear dead record & allow respawn!
+          if (mData.ts && Date.now() - mData.ts >= MONSTER_RESPAWN_MS) {
+            if (mData.dead || (typeof mData.hp === 'number' && mData.hp <= 0)) {
+              floorKilledIds.delete(mId);
+              const sp = floorMonsterSpawnTable.get(mId);
+              if (sp) {
+                sp.diedAt = 0;
+                if (!en) {
+                  spawnEnemy(sp.typeKey, sp.x, sp.z, sp.hpMult, sp.dmgMult, sp.eliteQuest, sp.syncId);
+                }
+              }
+              try { floorMonstersRef.child(mId).remove().catch(() => {}); } catch (e) {}
+            }
+            return;
+          }
 
           if (mData.dead || (typeof mData.hp === 'number' && mData.hp <= 0)) {
             floorKilledIds.add(mId);
+            const sp = floorMonsterSpawnTable.get(mId);
+            if (sp && !sp.diedAt) sp.diedAt = mData.ts || Date.now();
             if (!en) return;
             entitiesGroup.remove(en.mesh);
             enemies = enemies.filter((item) => item !== en);
@@ -6760,17 +7295,29 @@
         });
       });
 
-      // 3. Real-Time Chest Sync (Co-op Chest Open & Shared Gold)
+      // 3. Real-Time Chest Sync (Co-op Chest Open, Shared Gold & 6-Minute Auto Reset)
       floorChestsRef = fbDb.ref(`${baseFloorPath}/chests`);
       floorChestsRef.on('value', (snap) => {
         if (currentFloor !== floorNum) return;
         const cMap = snap.val() || {};
         Object.entries(cMap).forEach(([cId, cData]) => {
           if (!cData || !cData.opened) return;
-          if (cData.ts && Date.now() - cData.ts > 1200000) return;
           const chestInter = floorChestsMap.get(cId);
+          // 6-Minute Chest Reset Rule: If chest was opened >= 6 minutes ago, reset chest to closed!
+          if (cData.ts && Date.now() - cData.ts >= CHEST_RESET_MS) {
+            if (chestInter && chestInter.opened) {
+              chestInter.opened = false;
+              chestInter.openedAt = 0;
+              if (chestInter.lidPivot) chestInter.lidPivot.rotation.x = 0;
+              if (chestInter.mesh) chestInter.mesh.visible = true;
+              if (!interactables.includes(chestInter)) interactables.push(chestInter);
+            }
+            try { floorChestsRef.child(cId).remove().catch(() => {}); } catch (e) {}
+            return;
+          }
           if (chestInter && !chestInter.opened) {
             chestInter.opened = true;
+            chestInter.openedAt = cData.ts || Date.now();
             if (chestInter.lidPivot) chestInter.lidPivot.rotation.x = -Math.PI * 0.58;
             if (chestInter.mesh) chestInter.mesh.visible = false;
             interactables = interactables.filter((item) => item !== chestInter);
@@ -6841,14 +7388,20 @@
 
     function renderMpPlayerList() {
       const totalOnline = 1 + remotePlayers.size + aiCompanions.length;
-      document.getElementById('mpOnlineCountLabel').textContent = `🌐 連線大廳 (${totalOnline}人)`;
+      const roomShort = currentRoomId === 'village_lobby'
+        ? `🌐 公開山谷大廳 (${totalOnline}人)`
+        : currentRoomId.startsWith('party_')
+          ? `⚔️ 礦坑${currentRoomId.replace('party_', '')}房 (${totalOnline}/4人)`
+          : `🔑 ${customRoomTitle || '好友房'} (${totalOnline}人)`;
+      document.getElementById('mpOnlineCountLabel').textContent = roomShort;
       const box = document.getElementById('mpPlayerListBox');
       if (!box) return;
       box.innerHTML = '';
 
+      const curFlLabel = FLOOR_NAMES[currentFloor] ? FLOOR_NAMES[currentFloor].split(' ')[0] : (currentFloor > 0 ? `B${currentFloor}` : '村莊');
       const selfDiv = document.createElement('div');
       selfDiv.className = 'p-2 rounded-lg bg-stone-950 border border-emerald-500/60 flex items-center justify-between';
-      selfDiv.innerHTML = `<span class="font-bold text-emerald-300">🟢 ${myPlayerName} (你)</span><span class="text-stone-400">Lv.${player.level} · ${FLOOR_NAMES[currentFloor].split(' ')[0]}</span>`;
+      selfDiv.innerHTML = `<span class="font-bold text-emerald-300">🟢 ${myPlayerName} (你)</span><span class="text-stone-400 text-[11px]">${getFriendlyRoomLabel()} · Lv.${player.level} (${curFlLabel})</span>`;
       box.appendChild(selfDiv);
 
       remotePlayers.forEach((rp) => {
@@ -7027,8 +7580,51 @@
       }
     });
     document.getElementById('mpRoomSelect').addEventListener('change', (e) => {
-      connectToMultiplayerRoom(e.target.value);
+      const val = e.target.value;
+      if (val.startsWith('custom_')) {
+        mpRoomMode = 'custom';
+      } else {
+        mpRoomMode = 'auto';
+      }
+      connectToMultiplayerRoom(val);
       showToast(`🏰 已切換至連線頻道：${e.target.options[e.target.selectedIndex].text}`);
+    });
+
+    function joinCustomFriendRoom() {
+      const inp = document.getElementById('mpCustomRoomInput');
+      const rawName = (inp ? inp.value : '').trim();
+      if (!rawName) {
+        showToast('⚠️ 請先輸入自訂房間名稱（例如：888 或 阿凱團）');
+        return;
+      }
+      mpRoomMode = 'custom';
+      customRoomTitle = rawName;
+      const safeRoomId = 'custom_' + encodeURIComponent(rawName).replace(/[.#$\[\]%]/g, '_');
+      ensureRoomOptionInSelect(safeRoomId, `🔑 好友自訂房：${rawName}`);
+      connectToMultiplayerRoom(safeRoomId);
+      renderMpPlayerList();
+      showToast(`🔑 已進入自訂房間【${rawName}】！朋友輸入相同名稱即可進入同房並點名字瞬移匯合`);
+    }
+
+    document.getElementById('mpJoinCustomRoomBtn').addEventListener('click', joinCustomFriendRoom);
+    document.getElementById('mpCustomRoomInput').addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') {
+        e.preventDefault();
+        joinCustomFriendRoom();
+      }
+    });
+
+    document.getElementById('mpAutoMatchModeBtn').addEventListener('click', () => {
+      mpRoomMode = 'auto';
+      customRoomTitle = '';
+      if (currentFloor <= 0) {
+        ensureRoomOptionInSelect('village_lobby', '🏞️ 公開山谷大廳 (村莊預設)');
+        connectToMultiplayerRoom('village_lobby');
+        showToast('🔄 已恢復自動分流：目前位於「公開山谷大廳」');
+      } else {
+        currentRoomId = 'village_lobby';
+        autoAssignMinePartyRoom();
+      }
     });
     function sendOverheadChat(msgText) {
       if (!msgText) return;
@@ -7821,12 +8417,63 @@
         }
       }
 
-      // Player Movement relative to Camera Yaw
+      // Periodic Sweep (every 1s) in Dungeon: 3-Minute Monster Respawn & 6-Minute Chest Reset!
+      if (currentFloor >= 1 && now - lastRespawnSweepTime > 1000) {
+        lastRespawnSweepTime = now;
+        const curTs = Date.now();
+        let respawnedAnyMonster = false;
+        floorMonsterSpawnTable.forEach((sp, mId) => {
+          if (sp.diedAt > 0 && curTs - sp.diedAt >= MONSTER_RESPAWN_MS) {
+            sp.diedAt = 0;
+            floorKilledIds.delete(mId);
+            if (!enemies.some((e) => e.syncId === mId)) {
+              spawnEnemy(sp.typeKey, sp.x, sp.z, sp.hpMult, sp.dmgMult, sp.eliteQuest, sp.syncId);
+              respawnedAnyMonster = true;
+            }
+            if (floorMonstersRef) {
+              try { floorMonstersRef.child(mId).remove().catch(() => {}); } catch (e) {}
+            }
+          }
+        });
+        if (respawnedAnyMonster) {
+          showToast('♻️ 地城魔物已重生（每 3 分鐘自動刷新），後進隊友也能盡情討伐賺取經驗值！');
+        }
+
+        let resetAnyChest = false;
+        floorChestsMap.forEach((chestInter, cId) => {
+          if (chestInter.opened && chestInter.openedAt > 0 && curTs - chestInter.openedAt >= CHEST_RESET_MS) {
+            chestInter.opened = false;
+            chestInter.openedAt = 0;
+            if (chestInter.lidPivot) chestInter.lidPivot.rotation.x = 0;
+            if (chestInter.mesh) chestInter.mesh.visible = true;
+            if (!interactables.includes(chestInter)) interactables.push(chestInter);
+            resetAnyChest = true;
+            if (floorChestsRef) {
+              try { floorChestsRef.child(cId).remove().catch(() => {}); } catch (e) {}
+            }
+          }
+        });
+        if (resetAnyChest) {
+          showToast('🎁 地城寶箱已重置（每 6 分鐘自動刷新），可再次開啟獲得金幣與藥水！');
+        }
+      }
+
+      // Left Analog Circle: Smooth Camera Rotation
+      if (Math.hypot(camStickVec.x, camStickVec.y) > 0.05) {
+        player.camYaw -= camStickVec.x * 2.35 * dt;
+        player.camPitch = Math.max(0.18, Math.min(1.15, player.camPitch + camStickVec.y * 1.45 * dt));
+      }
+
+      // Player Movement relative to Camera Yaw (Keyboard WASD + Right Analog Circle #moveStickZone)
       let moveF = 0, moveR = 0;
       if (keys['w'] || keys['arrowup']) moveF += 1;
       if (keys['s'] || keys['arrowdown']) moveF -= 1;
       if (keys['d'] || keys['arrowright']) moveR += 1;
       if (keys['a'] || keys['arrowleft']) moveR -= 1;
+      if (Math.hypot(moveStickVec.x, moveStickVec.y) > 0.08) {
+        moveF += -moveStickVec.y;
+        moveR += moveStickVec.x;
+      }
 
       let vx = 0, vz = 0;
       if (moveF !== 0 || moveR !== 0) {
