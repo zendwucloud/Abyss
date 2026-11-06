@@ -304,6 +304,9 @@
           <button id="muteAudioBtn" type="button" class="gothic-btn px-2.5 py-1 rounded-lg text-stone-200">
             🔊 音效
           </button>
+          <button id="replayIntroBtn" type="button" class="gothic-btn px-2.5 py-1 rounded-lg text-amber-200 font-semibold">
+            🎬 重演入鎮序章
+          </button>
         </div>
 
         <!-- Hidden archive of removed dev shortcuts per Item #25 so validator sees no missing IDs -->
@@ -318,6 +321,15 @@
           <span id="a_leather"></span><span id="a_chain"></span><span id="a_plate"></span>
           <span id="p_hp"></span><span id="p_mp"></span>
         </div>
+      </div>
+
+      <!-- Active Feast Blessing & Hired Mercenary Squad HUD Strip (Items #2, #3, #9, #11) -->
+      <div id="mercenaryAndBuffHud" class="flex flex-col gap-1 pointer-events-auto">
+        <div id="feastBuffHudBadge" class="hidden gothic-panel px-2.5 py-1 rounded-lg text-[11px] font-bold text-amber-200 border border-amber-400/70 flex items-center justify-between gap-2">
+          <span>🌅 晨曦飽食祝福 (HP+20%·攻+15%)</span>
+          <span id="feastBuffTimerLabel" class="font-mono text-emerald-300">30:00</span>
+        </div>
+        <div id="mercSquadHudBox" class="hidden gothic-panel px-2.5 py-1.5 rounded-xl text-[11px] space-y-1 border border-amber-500/50"></div>
       </div>
     </div>
 
@@ -447,7 +459,7 @@
     </div>
   </div>
 
-  <!-- Dialogue Modal Panel (#dialoguePanel) -->
+  <!-- Dialogue Modal Panel (#dialoguePanel) with Dragon Quest Typewriter & Interactive Choice Options -->
   <div id="dialoguePanel" class="hidden fixed inset-0 z-40 flex items-center justify-center p-4 bg-black/70">
     <div class="gothic-panel w-full max-w-lg rounded-2xl p-5 sm:p-6 border-2 border-[#785a3c] space-y-4">
       <div class="flex items-center justify-between border-b border-stone-700/80 pb-3">
@@ -460,13 +472,95 @@
         </div>
         <button id="closeDialogueBtn" type="button" class="gothic-btn px-2.5 py-1 rounded-lg text-xs">✕ 關閉</button>
       </div>
-      <p id="dialogueBodyText" class="text-sm sm:text-base text-stone-200 leading-relaxed min-h-[4.5rem]"></p>
-      <div class="flex items-center justify-between pt-2">
+      <div class="relative p-3.5 rounded-xl bg-stone-950/90 border border-amber-500/40 min-h-[5.4rem]">
+        <p id="dialogueBodyText" class="text-sm sm:text-base text-amber-50 leading-relaxed font-medium tracking-wide"></p>
+        <span id="dqCursorTriangle" class="hidden inline-block text-amber-400 animate-bounce ml-1 text-xs">▼</span>
+      </div>
+      <!-- Optional Choice Buttons (e.g. Innkeeper Eileen's 2 Options: Eat Feast / Buy Round of Ale) -->
+      <div id="dialogueChoicesBox" class="hidden flex-col gap-2 pt-1"></div>
+      <div class="flex items-center justify-between pt-1">
         <span id="dialogueStepIndicator" class="text-xs text-stone-400">1 / 7</span>
         <div class="flex items-center gap-2">
           <button id="nextDialogueBtn" type="button" class="gothic-btn px-5 py-2 rounded-xl text-sm font-bold">繼續對話 →</button>
         </div>
       </div>
+    </div>
+  </div>
+
+  <!-- 2F Hero Private Room Stash Box Modal (#stashModal - Item #7: Simple & Clear Gold + Equipment Storage) -->
+  <div id="stashModal" class="hidden fixed inset-0 z-40 flex items-center justify-center p-3 sm:p-4 bg-black/80">
+    <div class="gothic-panel w-full max-w-3xl rounded-2xl p-4 sm:p-6 border-2 border-amber-500/80 space-y-4 max-h-[92vh] overflow-y-auto">
+      <div class="flex items-center justify-between border-b border-stone-700/80 pb-2.5">
+        <div class="flex items-center gap-2.5">
+          <span class="text-2xl">🧰</span>
+          <div>
+            <h3 class="text-lg sm:text-xl font-black text-amber-200">旅店二樓 · 主角專屬保管箱</h3>
+            <p class="text-xs text-stone-400">地城死亡直接回城會遺失身上所有金幣！出征前請將金幣與備用神裝存入保管箱（100% 安全保留）</p>
+          </div>
+        </div>
+        <button id="closeStashModalBtn" type="button" class="gothic-btn px-3 py-1 rounded-lg text-xs">✕ 關閉</button>
+      </div>
+
+      <!-- Gold Deposit / Withdraw Bar -->
+      <div class="p-3.5 rounded-xl bg-stone-950/90 border border-amber-500/40 flex flex-col sm:flex-row items-center justify-between gap-3">
+        <div class="flex items-center gap-4 text-xs sm:text-sm">
+          <div>👛 隨身金幣：<strong id="stashCarryGoldLabel" class="text-amber-300 font-mono text-base">60</strong> 🪙</div>
+          <div class="h-4 w-px bg-stone-700"></div>
+          <div>🏦 保管箱金幣：<strong id="stashBankGoldLabel" class="text-emerald-300 font-mono text-base">0</strong> 🪙</div>
+        </div>
+        <div class="flex flex-wrap items-center gap-1.5 text-xs">
+          <button id="stashDep100Btn" type="button" class="gothic-btn px-2.5 py-1.5 rounded-lg font-bold text-amber-200">存入 100🪙</button>
+          <button id="stashDepAllBtn" type="button" class="gothic-btn px-2.5 py-1.5 rounded-lg font-bold text-amber-300 border-amber-400">全部存入</button>
+          <button id="stashWith100Btn" type="button" class="gothic-btn px-2.5 py-1.5 rounded-lg font-bold text-sky-200">取出 100🪙</button>
+          <button id="stashWithAllBtn" type="button" class="gothic-btn px-2.5 py-1.5 rounded-lg font-bold text-emerald-300 border-emerald-400">全部取出</button>
+        </div>
+      </div>
+
+      <!-- Side-by-side Equipment Transfer: Left = Bag (24), Right = Stash Box (20) -->
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-3.5">
+        <div class="p-3 rounded-xl bg-stone-950/90 border border-stone-700 space-y-2">
+          <div class="flex items-center justify-between text-xs">
+            <span class="font-bold text-amber-300">🎒 隨身背包裝備（點擊存入保管箱）</span>
+            <span id="stashBagCountLabel" class="text-stone-400">0 / 24</span>
+          </div>
+          <div id="stashBagGrid" class="grid grid-cols-2 gap-1.5 max-h-60 overflow-y-auto pr-1"></div>
+        </div>
+        <div class="p-3 rounded-xl bg-stone-950/90 border border-stone-700 space-y-2">
+          <div class="flex items-center justify-between text-xs">
+            <span class="font-bold text-emerald-300">🧰 保管箱存放裝備（點擊取出至背包）</span>
+            <span id="stashBoxCountLabel" class="text-stone-400">0 / 20</span>
+          </div>
+          <div id="stashBoxGrid" class="grid grid-cols-2 gap-1.5 max-h-60 overflow-y-auto pr-1"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Mercenary 10-Minute Renewal Reminder Modal (#mercRenewModal - Item #3) -->
+  <div id="mercRenewModal" class="hidden fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/75">
+    <div class="gothic-panel w-full max-w-md rounded-2xl p-5 border-2 border-amber-400 space-y-3.5 text-center">
+      <div class="text-3xl">⏳</div>
+      <h3 class="text-lg font-black text-amber-200">傭兵契約即將到期提醒（剩餘 10 分鐘）</h3>
+      <p id="mercRenewDesc" class="text-xs sm:text-sm text-stone-200 leading-relaxed"></p>
+      <div class="flex gap-2 justify-center pt-1">
+        <button id="confirmMercRenewBtn" type="button" class="gothic-btn px-4 py-2 rounded-xl text-xs sm:text-sm font-bold text-emerald-200 border-emerald-400">
+          🪙 立即加價續約 (+1 小時)
+        </button>
+        <button id="cancelMercRenewBtn" type="button" class="gothic-btn px-4 py-2 rounded-xl text-xs sm:text-sm text-stone-300">
+          稍後再說
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 10-Second Resurrection Progress Floating HUD (#reviveProgressBanner - Item #11) -->
+  <div id="reviveProgressBanner" class="hidden fixed top-28 left-1/2 -translate-x-1/2 z-40 pointer-events-none w-72 sm:w-80">
+    <div class="gothic-panel p-3 rounded-2xl border-2 border-emerald-400/90 shadow-2xl space-y-1.5 text-center">
+      <div id="reviveProgressTitle" class="text-xs font-black text-emerald-300">🧪 正在消耗 HP 藥水施展復甦術...</div>
+      <div class="w-full h-2.5 bg-stone-950 rounded-full overflow-hidden border border-emerald-700">
+        <div id="reviveProgressFill" class="h-full bg-gradient-to-r from-emerald-600 via-teal-400 to-amber-300 transition-all duration-100" style="width: 0%;"></div>
+      </div>
+      <div id="reviveProgressSub" class="text-[11px] font-mono text-amber-200">剩餘 10.0 秒</div>
     </div>
   </div>
 
@@ -698,7 +792,7 @@
               🪟 開啟第 2 個同步測試視窗
             </button>
             <button id="toggleAiPartyBtn" type="button" class="gothic-btn px-2.5 py-1 rounded-lg font-bold text-amber-300">
-              🤖 召喚 3 位 AI 共鬥隊友（單人預覽多人效果）
+              🍺 前往旅店 1F 酒館招募傭兵 (最多 3 人)
             </button>
           </div>
         </div>
@@ -713,14 +807,20 @@
       <div class="text-4xl">💀</div>
       <h2 class="text-2xl sm:text-3xl font-black text-red-400 tracking-wider">你倒在了深淵礦坑之中</h2>
       <p id="deathStatusDesc" class="text-xs sm:text-sm text-stone-300 leading-relaxed">
-        你可以選擇呼叫同伴／救援隊原地復活（不損失任何金幣），或立即返回山中小村莊復活（損失 50% 隨身金幣）。
+        若隊伍中有存活的酒館傭兵或連線同伴，可等待他們耗時 10 秒將你救活（保住隨身金幣）；若直接返回城鎮復活，將<strong class="text-red-400">遺失身上所有金幣</strong>（存放在旅店二樓保管箱的金幣與裝備不受影響）。
       </p>
+      <div id="deathMercRescueBox" class="hidden p-3 rounded-xl bg-emerald-950/80 border border-emerald-400 text-xs text-emerald-200 space-y-1.5">
+        <div id="deathMercRescueText" class="font-bold">🤝 你的傭兵正在衝過來為你施展 10 秒緊急救援...</div>
+        <div class="w-full h-2.5 bg-stone-950 rounded-full overflow-hidden border border-emerald-600">
+          <div id="deathMercRescueBar" class="h-full bg-gradient-to-r from-emerald-500 to-amber-300" style="width: 0%;"></div>
+        </div>
+      </div>
       <div class="flex flex-col gap-2.5 pt-1">
         <button id="waitReviveBtn" type="button" class="gothic-btn px-5 py-2.5 rounded-xl font-bold text-sm sm:text-base w-full border-emerald-400 text-emerald-200">
-          🤝 等待同伴幫助原地復活（無金幣損失）
+          🤝 呼叫傭兵／同伴 10 秒原地救援（保住隨身金幣）
         </button>
         <button id="respawnBtn" type="button" class="gothic-btn px-5 py-2.5 rounded-xl font-bold text-sm sm:text-base w-full border-red-500/70 text-amber-200">
-          ✨ 於灰燼鎮噴泉廣場復生（山中小村莊）
+          🔮 直接返回城鎮郊區魔法陣復活（遺失身上所有金幣）
         </button>
       </div>
     </div>
@@ -770,6 +870,8 @@
 
     function getFloorName(fl) {
       if (fl === 0) return '阿爾卑斯山中小村莊';
+      if (fl === -99) return '🏨 晨曦大旅店 · 1F 冒險者酒館大廳';
+      if (fl === -98) return '🛏️ 晨曦大旅店 · 2F 客房與專屬房間';
       if (fl < 0) return `村莊民宅內部 · 第 ${Math.abs(fl)} 號屋`;
       const biome = getBiomeTitle(fl);
       if (fl === 100) return `🔥 終極決戰：B100 ${biome}（噴火巨龍 & 地獄魔王）`;
@@ -1492,6 +1594,12 @@
       activeHpTier: 1,
       activeMpTier: 1,
       bag: [],
+      stashGold: 0,
+      stashBag: [],
+      feastBuffUntil: 0,
+      mercHireCounts: {},
+      hiredMercs: [],
+      hasCompletedIntro: false,
       clearedFloors: new Set(),
       deepestFloor: 1,
       townPortalFloor: 0,
@@ -1510,9 +1618,14 @@
       return CLASS_SPECS[player.avatarId] || CLASS_SPECS.wanderer_m;
     }
 
+    function hasFeastBuff() {
+      return Number(player.feastBuffUntil || 0) > Date.now();
+    }
+
     function effDmg() {
       const spec = getClassSpec();
-      return Math.round((player.weaponDmg + player.levelBonus) * spec.atkMult);
+      const feastMult = hasFeastBuff() ? 1.15 : 1.0;
+      return Math.round((player.weaponDmg + player.levelBonus) * spec.atkMult * feastMult);
     }
 
     function effDef() {
@@ -1528,7 +1641,7 @@
     function addGearToBag(gearTemplate) {
       if (!gearTemplate) return false;
       if (player.bag.length >= 24) {
-        showToast('🎒 背包已滿（24/24）！請先將多餘裝備賣給黑市商人');
+        showToast('🎒 背包已滿（24/24）！請先將多餘裝備賣給黑市商人或存入旅店二樓保管箱');
         return false;
       }
       player.bag.push({
@@ -1552,7 +1665,8 @@
         player.armorDef = ARMORS_DB[player.armorTier].def;
         player.armorHp = ARMORS_DB[player.armorTier].hpBonus;
       }
-      player.maxHp = Math.round((player.baseMaxHp + player.armorHp) * spec.hpMult);
+      const feastHpMult = hasFeastBuff() ? 1.20 : 1.0;
+      player.maxHp = Math.round((player.baseMaxHp + player.armorHp) * spec.hpMult * feastHpMult);
       player.maxMp = player.baseMaxMp;
       if (healFull) {
         player.hp = player.maxHp;
@@ -3869,8 +3983,8 @@
       innLight.position.set(0, 3.2, 3.6);
       innGroup.add(innLight);
 
-      // Eye-Catching Floating 3D Signboard above the Inn
-      const innSign = createFloatingSign('🏨 晨曦大旅店 INN · 櫃台/床鋪休息 (回血回魔)', '#f59e0b', '#fef08a');
+      // Eye-Catching Floating 3D Signboard above the Expanded 2-Story Inn
+      const innSign = createFloatingSign('🏨 晨曦大旅店 INN · 1F酒館招募傭兵 / 2F住宿與保管箱', '#f59e0b', '#fef08a');
       innSign.position.set(0, 6.9, 3.1);
       innSign.scale.setScalar(1.22);
       innGroup.add(innSign);
@@ -3898,7 +4012,7 @@
         exitRotY: 0,
         radius: 1.85,
         mesh: innMarker,
-        prompt: '🏨 走進「晨曦大旅店」（內有櫃台與舒適床鋪，付 20🪙 回滿 HP / MP）'
+        prompt: '🏨 走進「晨曦大旅店」（1F 酒館大餐與招募傭兵 · 2F 專屬客房床鋪與保管箱）'
       });
 
       // 7. Blacksmith Goren's Open-Air Forge & Anvil Stall + Armorer Mira's Pavilion
@@ -3976,39 +4090,98 @@
         prompt: '💧 飲用「西岸古井清泉」（全滿恢復 HP / MP）'
       });
 
-      // Item #3 (1.2): If player used Town Portal from deep dungeon, spawn Blue Return Portal in Village Square!
-      if (player.townPortalFloor && player.townPortalFloor >= 1) {
-        const tpX = 11.2, tpZ = 3.8;
-        const tpY = getVillageWalkableHeight(tpX, tpZ);
-        const tpGroup = new THREE.Group();
-        tpGroup.position.set(tpX, tpY, tpZ);
-        const ring = new THREE.Mesh(
-          new THREE.TorusGeometry(1.15, 0.14, 10, 24),
-          new THREE.MeshBasicMaterial({ color: 0x38bdf8 })
-        );
-        ring.position.y = 1.35;
-        const core = new THREE.Mesh(
-          new THREE.CircleGeometry(1.05, 20),
-          new THREE.MeshBasicMaterial({ color: 0x0284c7, transparent: true, opacity: 0.68, side: THREE.DoubleSide })
-        );
-        core.position.y = 1.35;
-        const tpLight = new THREE.PointLight(0x38bdf8, 2.2, 10);
-        tpLight.position.y = 1.5;
-        const tpSign = createFloatingSign(`🌀 傳送門：返回 B${player.townPortalFloor}`, '#38bdf8', '#e0f2fe');
-        tpSign.position.y = 2.95;
-        tpGroup.add(ring, core, tpLight, tpSign);
-        worldGroup.add(tpGroup);
+      // Item #13 (1.3): Suburban Clearing Ancient Magic Circle (城鎮郊區空地魔法陣) at (-15.5, 25.0)
+      // Always present in the Southwest Suburban Clearing; when player returns from dungeon, the portal opens here and persists across restarts!
+      const SUBURBAN_MAGIC_CIRCLE = { x: -15.5, z: 25.0 };
+      layPathSegment(-18.0, 14.0, SUBURBAN_MAGIC_CIRCLE.x, SUBURBAN_MAGIC_CIRCLE.z - 2.0, 1.3);
+      {
+        const mcX = SUBURBAN_MAGIC_CIRCLE.x;
+        const mcZ = SUBURBAN_MAGIC_CIRCLE.z;
+        const mcY = getVillageWalkableHeight(mcX, mcZ);
+        const mcGroup = new THREE.Group();
+        mcGroup.position.set(mcX, mcY, mcZ);
 
-        interactables.push({
-          type: 'town_portal_return',
-          autoEnter: true,
-          targetFloor: player.townPortalFloor,
-          x: tpX,
-          z: tpZ,
-          radius: 1.85,
-          mesh: null,
-          prompt: `🌀 踏入傳送門直接返回 B${player.townPortalFloor}`
-        });
+        // Two-tier carved stone altar platform
+        const outerBase = new THREE.Mesh(new THREE.CylinderGeometry(4.2, 4.6, 0.26, 24), sharedMats.stoneBase);
+        outerBase.position.y = 0.13;
+        outerBase.receiveShadow = true;
+        const innerBase = new THREE.Mesh(new THREE.CylinderGeometry(3.2, 3.4, 0.32, 24), sharedMats.stoneLight);
+        innerBase.position.y = 0.22;
+        innerBase.receiveShadow = true;
+        mcGroup.add(outerBase, innerBase);
+
+        // Glowing concentric arcane rune rings on the ground
+        const hasActivePortal = !!(player.townPortalFloor && player.townPortalFloor >= 1);
+        const runeColor = hasActivePortal ? 0x38bdf8 : 0x6366f1;
+        const outerRuneRing = new THREE.Mesh(
+          new THREE.RingGeometry(2.65, 2.95, 32),
+          new THREE.MeshBasicMaterial({ color: runeColor, side: THREE.DoubleSide, transparent: true, opacity: hasActivePortal ? 0.92 : 0.55 })
+        );
+        outerRuneRing.rotation.x = -Math.PI / 2;
+        outerRuneRing.position.y = 0.39;
+        const innerRuneRing = new THREE.Mesh(
+          new THREE.RingGeometry(1.55, 1.82, 24),
+          new THREE.MeshBasicMaterial({ color: hasActivePortal ? 0x7dd3fc : 0x818cf8, side: THREE.DoubleSide, transparent: true, opacity: hasActivePortal ? 0.95 : 0.45 })
+        );
+        innerRuneRing.rotation.x = -Math.PI / 2;
+        innerRuneRing.position.y = 0.40;
+        mcGroup.add(outerRuneRing, innerRuneRing);
+
+        // 5 Ancient Rune Obelisk Pillars surrounding the magic circle
+        for (let p = 0; p < 5; p++) {
+          const ang = (p / 5) * Math.PI * 2 - Math.PI / 2;
+          const px = Math.cos(ang) * 3.55;
+          const pz = Math.sin(ang) * 3.55;
+          const obelisk = new THREE.Mesh(new THREE.BoxGeometry(0.58, 2.55, 0.58), sharedMats.stoneBase);
+          obelisk.position.set(px, 1.35, pz);
+          obelisk.rotation.y = -ang;
+          obelisk.castShadow = true;
+          const obCap = new THREE.Mesh(new THREE.ConeGeometry(0.45, 0.65, 4), sharedMats.stoneLight);
+          obCap.position.set(px, 2.92, pz);
+          obCap.rotation.y = -ang + Math.PI / 4;
+          const runeCrystal = new THREE.Mesh(
+            new THREE.OctahedronGeometry(0.24, 0),
+            new THREE.MeshBasicMaterial({ color: hasActivePortal ? 0x38bdf8 : 0x818cf8 })
+          );
+          runeCrystal.position.set(px, 3.48, pz);
+          mcGroup.add(obelisk, obCap, runeCrystal);
+        }
+
+        if (hasActivePortal) {
+          // Active swirling dimensional portal vortex on the Suburban Magic Circle!
+          const ring = new THREE.Mesh(
+            new THREE.TorusGeometry(1.38, 0.16, 12, 28),
+            new THREE.MeshBasicMaterial({ color: 0x38bdf8 })
+          );
+          ring.position.y = 1.75;
+          const core = new THREE.Mesh(
+            new THREE.CircleGeometry(1.26, 24),
+            new THREE.MeshBasicMaterial({ color: 0x0284c7, transparent: true, opacity: 0.74, side: THREE.DoubleSide })
+          );
+          core.position.y = 1.75;
+          const tpLight = new THREE.PointLight(0x38bdf8, 2.6, 14);
+          tpLight.position.y = 2.0;
+          const tpSign = createFloatingSign(`🔮 郊區魔法陣傳送門：返回 B${player.townPortalFloor}（重開仍保留）`, '#38bdf8', '#e0f2fe');
+          tpSign.position.y = 3.85;
+          mcGroup.add(ring, core, tpLight, tpSign);
+
+          interactables.push({
+            type: 'town_portal_return',
+            autoEnter: true,
+            targetFloor: player.townPortalFloor,
+            x: mcX,
+            z: mcZ,
+            radius: 2.15,
+            mesh: null,
+            prompt: `🌀 踏入郊區魔法陣傳送門返回 B${player.townPortalFloor}`
+          });
+        } else {
+          const idleSign = createFloatingSign('🔮 城鎮郊區遠古魔法陣（從地城回城時於此開啟傳送門）', '#818cf8', '#e0e7ff');
+          idleSign.position.y = 3.65;
+          mcGroup.add(idleSign);
+        }
+
+        worldGroup.add(mcGroup);
       }
 
       // 8 Street Lamps
@@ -4432,199 +4605,472 @@
       showToast(`🏠 進入第 ${houseIdx + 1} 號屋！靠近 ${qData.npcName} 可接取或回報委託任務，走向門口即可自動離開`);
     }
 
-    // Build 3D Village Inn Interior with Reception Counter (櫃台), Innkeeper NPC & Cozy Beds (床鋪) to Pay Small Gold for Full HP/MP!
-    const INN_REST_COST = 20;
-    function restAtVillageInn(sourceLabel = '旅店舒適大床') {
-      if (player.hp >= player.maxHp && player.mp >= player.maxMp) {
-        playSound('potion');
-        showToast('✨ 你的生命與法力目前已經是全滿狀態，精神飽滿！');
-        openDialogue('旅店老闆娘 艾琳', '晨曦大旅店掌櫃', '🏨', [
-          '「客官，您看起來氣色極佳、生命與法力都已經是全滿狀態囉！隨時歡迎回來歇腳！」'
-        ]);
-        return;
+    // =========================================================================
+    // 10B. EXPANDED 2-STORY GRAND DAWN INN (1F TAVERN & 2F LODGING) + MERCENARY GUILD
+    // =========================================================================
+    const INN_FEAST_COST = 50;
+    const INN_ALE_ROUND_COST = 30;
+    const MERC_DURATION_SEC = 3600; // 1 Hour (3600s)
+    const MERC_WARN_REMAIN_SEC = 600; // Warn when <= 10 minutes (600s) left
+
+    // 8 Distinct Class Mercenary Templates (Items #2, #3, #11, #12)
+    const MERC_ROSTER_TEMPLATES = [
+      { rosterId: 'merc_paladin',   name: '聖殿騎士·亞瑟',   classTitle: '聖輝審判官', presetId: 'paladin_m',   icon: '⚜️', w: 4, a: 4, ox: -2.0, oz: 1.8 },
+      { rosterId: 'merc_valkyrie',  name: '女武神·希雅',     classTitle: '緋紅女武神', presetId: 'valkyrie_f',  icon: '🪽', w: 4, a: 3, ox:  2.0, oz: 1.8 },
+      { rosterId: 'merc_berserker', name: '狂戰士·布洛克',   classTitle: '北境狂戰士', presetId: 'berserker_m', icon: '🪓', w: 5, a: 3, ox:  0.0, oz: 2.6 },
+      { rosterId: 'merc_mage',      name: '星穹術士·薇薇安', classTitle: '星穹秘法師', presetId: 'mage_f',      icon: '🔮', w: 4, a: 2, ox: -2.2, oz: 2.4 },
+      { rosterId: 'merc_ranger',    name: '翠風射手·艾琳',   classTitle: '精靈神射手', presetId: 'ranger_f',    icon: '🏹', w: 4, a: 2, ox:  2.2, oz: 2.4 },
+      { rosterId: 'merc_assassin',  name: '暗影夜行者·洛奇', classTitle: '暗影刺客',   presetId: 'assassin_m',  icon: '🥷', w: 4, a: 2, ox: -1.5, oz: 2.8 },
+      { rosterId: 'merc_ronin',     name: '櫻華劍姬·凜',     classTitle: '東方女劍豪', presetId: 'ronin_f',     icon: '🌸', w: 5, a: 2, ox:  1.5, oz: 2.8 },
+      { rosterId: 'merc_wanderer',  name: '蒼藍劍士·雷恩',   classTitle: '蒼藍遊俠',   presetId: 'wanderer_m',  icon: '🗡️', w: 3, a: 3, ox:  0.0, oz: 2.0 }
+    ];
+
+    let tavernMercCandidates = [];
+    let pendingRenewalMerc = null;
+
+    // Item #2 & #12: Calculate Mercenary Hire Price from Level & Loyalty Discount!
+    // Higher level mercenaries cost significantly more, while loyalty gives 90% (10+), 80% (20+), 70% (30+) discount!
+    function getMercDiscountMult(hireCount) {
+      if (hireCount >= 30) return 0.70;
+      if (hireCount >= 20) return 0.80;
+      if (hireCount >= 10) return 0.90;
+      return 1.00;
+    }
+
+    function getMercDiscountLabel(hireCount) {
+      if (hireCount >= 30) return '🔥 生死摯友 7 折優惠';
+      if (hireCount >= 20) return '💎 莫逆老友 8 折優惠';
+      if (hireCount >= 10) return '🤝 熟識戰友 9 折優惠';
+      if (hireCount >= 5)  return '😊 默契夥伴（滿10次享9折）';
+      if (hireCount >= 3)  return '👋 漸漸熟絡（滿10次享9折）';
+      return '🆕 初次相識（連續僱用可培養羈絆與折扣）';
+    }
+
+    function calcMercHirePrice(mercLv, hireCount) {
+      const baseCost = Math.round(35 + mercLv * 24 + Math.pow(mercLv, 1.38) * 6.5);
+      const mult = getMercDiscountMult(hireCount);
+      return {
+        baseCost,
+        finalCost: Math.max(15, Math.round(baseCost * mult)),
+        discountMult: mult
+      };
+    }
+
+    // Item #12: Evolving Dialogue from Stranger (0~2) -> Familiar (3~4) -> Old Friend (5~9) -> Veteran Discount (10 / 20 / 30+)
+    function getMercDialogueLines(cand, hireCount, priceObj) {
+      const lvDiffStr = cand.level > player.level ? `比你高 ${cand.level - player.level} 級` : cand.level < player.level ? `比你低 ${player.level - cand.level} 級` : '與你同級';
+      const discTag = getMercDiscountLabel(hireCount);
+      let greeting = '';
+      if (hireCount >= 30) {
+        greeting = `「哈哈哈，老夥計 ${myPlayerName}！我們已經並肩作戰 ${hireCount} 次了！不管是深淵第 100 層的巨龍還是地獄魔王，我這條命早就交給你了！這次直接算你 7 折老友價！」`;
+      } else if (hireCount >= 20) {
+        greeting = `「唷，${myPlayerName}！我們已經合作 ${hireCount} 次啦，跟你下礦坑最痛快！看在老交情的份上，雇用費直接給你打 8 折！」`;
+      } else if (hireCount >= 10) {
+        greeting = `「${myPlayerName}，又是你啊！不知不覺我們已經組隊 ${hireCount} 次了，背靠背作戰的感覺真不錯。這次算你 9 折友情價吧！」`;
+      } else if (hireCount >= 5) {
+        greeting = `「嗨，${myPlayerName}！我們已經一起冒險 ${hireCount} 次了，越來越有默契囉！等你找我滿 10 次，我就給你算老友折扣！」`;
+      } else if (hireCount >= 3) {
+        greeting = `「是你啊，${myPlayerName}。前幾次（${hireCount} 次）跟你下地城配合得挺順手的，不像一開始那麼生疏了。這次也要一起闖礦坑嗎？」`;
+      } else {
+        greeting = `「陌生人，在找幫手嗎？我是【${cand.classTitle}】${cand.name}（Lv.${cand.level}，${lvDiffStr}）。只要付得起公道價錢，我的兵刃就為你效力一小時。」`;
       }
-      const fee = Math.min(player.gold, INN_REST_COST);
-      if (player.gold < INN_REST_COST && player.gold > 0) {
-        player.gold = 0;
-      } else if (player.gold >= INN_REST_COST) {
-        player.gold -= INN_REST_COST;
-      }
+      const priceLine = priceObj.discountMult < 1.0
+        ? `【傭兵契約】等級 Lv.${cand.level}（原價 ${priceObj.baseCost}🪙 ➔ ${discTag} 特價 ${priceObj.finalCost}🪙 / 持續 1 小時 · 累計僱用 ${hireCount} 次）`
+        : `【傭兵契約】等級 Lv.${cand.level}（雇用費 ${priceObj.finalCost}🪙 / 持續 1 小時 · 累計僱用 ${hireCount} 次 · ${discTag}）`;
+      return [greeting, priceLine];
+    }
+
+    // Generate 6 Tavern Mercenary Candidates in 1F Hall with random level [player.level - 5, player.level + 5]
+    function generateTavernMercCandidates(forceReset = false) {
+      if (tavernMercCandidates.length > 0 && !forceReset) return;
+      tavernMercCandidates = [];
+      const shuffled = [...MERC_ROSTER_TEMPLATES].sort(() => Math.random() - 0.5).slice(0, 6);
+      const seatCoords = [
+        { x: -4.2, z: -0.6, rotY:  0.6 },
+        { x: -2.2, z: -0.6, rotY: -0.5 },
+        { x:  2.2, z: -0.6, rotY:  0.5 },
+        { x:  4.2, z: -0.6, rotY: -0.6 },
+        { x: -3.2, z:  2.5, rotY:  0.4 },
+        { x:  3.2, z:  2.5, rotY: -0.4 }
+      ];
+      shuffled.forEach((tpl, idx) => {
+        const delta = Math.floor(Math.random() * 11) - 5; // -5 to +5
+        const mercLv = Math.max(1, Math.min(99, (player.level || 1) + delta));
+        const maxHp = Math.round(calcHeroBaseHp(mercLv) * 1.15);
+        const atk = Math.round(calcHeroBaseAtk(mercLv) + mercLv * 3.2);
+        const seat = seatCoords[idx];
+        tavernMercCandidates.push({
+          ...tpl,
+          level: mercLv,
+          maxHp,
+          atk,
+          seatX: seat.x,
+          seatZ: seat.z,
+          seatRotY: seat.rotY
+        });
+      });
+    }
+
+    // Item #8: Free Instant Bed Rest in Player's Private 2F Room (No UI opened!)
+    function restAtHeroPrivateBed() {
       player.hp = player.maxHp;
       player.mp = player.maxMp;
+      // Also heal any hired mercenaries!
+      if (Array.isArray(player.hiredMercs)) {
+        player.hiredMercs.forEach((m) => {
+          if (!m.isDowned) m.hp = m.maxHp;
+        });
+      }
       playSound('levelup');
       spawnHitParticles(player.x, player.y + 1.1, player.z, 0xfacc15, 22);
       spawnHitParticles(player.x, player.y + 1.3, player.z, 0x4ade80, 18);
-      spawnFloatingText(player.x, player.y + 2.0, player.z, `🛏️ 旅店休息！HP & MP 100% 全滿 (-${fee}🪙)`, '#4ade80', true);
+      spawnFloatingText(player.x, player.y + 2.0, player.z, '🛏️ 專屬床鋪休息！HP & MP 100% 全滿', '#4ade80', true);
       saveHeroProfileToStorage();
       updateHudUI();
-      showToast(`🛏️ 在【${sourceLabel}】溫暖休息片刻（花費 ${fee} 金幣），生命與法力已 100% 完全恢復！`);
+      showToast('🛏️ 你在專屬客房的舒適大床上休息片刻，生命與法力已 100% 完全恢復！');
     }
 
-    function loadInnInterior() {
+    // Item #9: Talk to Innkeeper Eileen -> 2 Choices: 1. Eat Inn Feast (HP/MP full + 30m Blessing) / 2. Buy Ale Round to Refresh Mercenaries
+    function openInnkeeperEileenDialogue() {
+      openDialogue(
+        '旅店老闆娘 艾琳',
+        '晨曦大旅店一樓酒館掌櫃',
+        '🍺',
+        [
+          '「歡迎來到擴建後的【晨曦大旅店】！一樓是冒險者酒館大廳，你可以跟桌邊的各職業傭兵交談並僱用最多 3 人同行；二樓則是住宿區與鎮長為你準備的專屬客房。」',
+          '「今天想來份剛出爐的招牌飯店大餐補充體力，還是請大廳的冒險者們喝一輪麥酒、吸引新一批傭兵進駐呢？」'
+        ],
+        [
+          {
+            label: `🍖 1. 吃飯店大餐 (${INN_FEAST_COST}🪙 · 回滿 HP/MP + 30分鐘「🌅晨曦飽食祝福」生命+20%、攻擊+15%)`,
+            action: () => {
+              if (player.gold < INN_FEAST_COST) {
+                playSound('hurt');
+                showToast(`🪙 金幣不足！享用飯店大餐需要 ${INN_FEAST_COST} 金幣（目前持有 ${player.gold}🪙）`);
+                return;
+              }
+              player.gold -= INN_FEAST_COST;
+              player.feastBuffUntil = Date.now() + 30 * 60 * 1000; // 30 minutes
+              recalcPlayerMaxStats(true);
+              if (Array.isArray(player.hiredMercs)) {
+                player.hiredMercs.forEach((m) => { if (!m.isDowned) m.hp = m.maxHp; });
+              }
+              playSound('win');
+              spawnHitParticles(player.x, player.y + 1.2, player.z, 0xfbbf24, 26);
+              spawnFloatingText(player.x, player.y + 2.1, player.z, '🌅 晨曦飽食祝福！(HP+20% / 攻+15% · 30m)', '#fde047', true);
+              saveHeroProfileToStorage();
+              updateHudUI();
+              showToast('🍖 享用了豐盛的晨曦飯店大餐！HP/MP 全滿，並獲得 30 分鐘「🌅 晨曦飽食祝福」（最大生命 +20%、攻擊力 +15%）！');
+            }
+          },
+          {
+            label: `🍺 2. 請全場喝麥酒 (${INN_ALE_ROUND_COST}🪙 · 立即刷新一樓大廳的候選傭兵名單與等級)`,
+            action: () => {
+              if (player.gold < INN_ALE_ROUND_COST) {
+                playSound('hurt');
+                showToast(`🪙 金幣不足！請全場喝麥酒需要 ${INN_ALE_ROUND_COST} 金幣（目前持有 ${player.gold}🪙）`);
+                return;
+              }
+              player.gold -= INN_ALE_ROUND_COST;
+              generateTavernMercCandidates(true);
+              playSound('levelup');
+              saveHeroProfileToStorage();
+              updateHudUI();
+              if (currentFloor === -99) {
+                const keepX = player.x, keepZ = player.z, keepRot = player.rotY;
+                loadInnInterior(false);
+                player.x = keepX; player.z = keepZ; player.rotY = keepRot;
+                if (playerMesh) playerMesh.position.set(player.x, 0, player.z);
+              }
+              showToast('🍺 「老闆娘，全場的麥酒算我的！」大廳響起歡呼，6 位全新的各職業傭兵已進駐酒館！');
+            }
+          }
+        ]
+      );
+    }
+
+    // Item #2, #3, #12: Interact with a Tavern Mercenary NPC in 1F Hall to view stats, evolving dialogue & hire!
+    function openTavernMercRecruitDialogue(cand) {
+      const hireCount = Number(player.mercHireCounts[cand.rosterId] || 0);
+      const priceObj = calcMercHirePrice(cand.level, hireCount);
+      const alreadyHired = player.hiredMercs.some((m) => m.rosterId === cand.rosterId);
+      const lines = getMercDialogueLines(cand, hireCount, priceObj);
+
+      if (alreadyHired) {
+        openDialogue(
+          `${cand.name} (Lv.${cand.level})`,
+          `${cand.classTitle} · 已在你的隊伍中`,
+          cand.icon,
+          [
+            `「${myPlayerName}，我已經在你的隊伍裡待命了！隨時準備跟你出發前往深淵礦坑！」`
+          ],
+          [
+            {
+              label: `🪙 提前加價續約 1 小時 (${priceObj.finalCost}🪙)`,
+              action: () => {
+                if (player.gold < priceObj.finalCost) {
+                  playSound('hurt');
+                  showToast(`🪙 金幣不足！續約需要 ${priceObj.finalCost} 金幣`);
+                  return;
+                }
+                player.gold -= priceObj.finalCost;
+                player.mercHireCounts[cand.rosterId] = hireCount + 1;
+                const activeM = player.hiredMercs.find((m) => m.rosterId === cand.rosterId);
+                if (activeM) {
+                  activeM.remainingSec += MERC_DURATION_SEC;
+                  activeM.warned10Min = false;
+                  activeM.hp = activeM.maxHp;
+                }
+                playSound('levelup');
+                saveHeroProfileToStorage();
+                updateHudUI();
+                showToast(`🤝 已與【${cand.name}】續約 1 小時！（累計僱用 ${hireCount + 1} 次）`);
+              }
+            }
+          ]
+        );
+        return;
+      }
+
+      openDialogue(
+        `${cand.name} (Lv.${cand.level})`,
+        `${cand.classTitle} · 生命 ${cand.maxHp} · 攻擊 ${cand.atk}`,
+        cand.icon,
+        lines,
+        [
+          {
+            label: `🤝 僱用【${cand.name}】加入隊伍 1 小時 (花費 ${priceObj.finalCost}🪙 · 目前隊伍 ${player.hiredMercs.length}/3 人)`,
+            action: () => {
+              if (player.hiredMercs.length >= 3) {
+                playSound('hurt');
+                showToast('⚠️ 最多只能同時招募 3 位傭兵同行！');
+                return;
+              }
+              if (player.gold < priceObj.finalCost) {
+                playSound('hurt');
+                showToast(`🪙 金幣不足！僱用 Lv.${cand.level} ${cand.name} 需要 ${priceObj.finalCost} 金幣`);
+                return;
+              }
+              player.gold -= priceObj.finalCost;
+              const newCount = hireCount + 1;
+              player.mercHireCounts[cand.rosterId] = newCount;
+              player.hiredMercs.push({
+                rosterId: cand.rosterId,
+                name: cand.name,
+                classTitle: cand.classTitle,
+                presetId: cand.presetId,
+                icon: cand.icon,
+                level: cand.level,
+                hp: cand.maxHp,
+                maxHp: cand.maxHp,
+                atk: cand.atk,
+                w: cand.w,
+                a: cand.a,
+                ox: cand.ox,
+                oz: cand.oz,
+                remainingSec: MERC_DURATION_SEC,
+                warned10Min: false,
+                isDowned: false
+              });
+              rebuildActiveMercenaryMeshes();
+              playSound('win');
+              saveHeroProfileToStorage();
+              updateHudUI();
+              showToast(`🎉 成功招募【Lv.${cand.level} ${cand.name}】！（持續 1 小時 · 累計僱用 ${newCount} 次 · 隊伍 ${player.hiredMercs.length}/3 人）`);
+              if (currentFloor === -99) {
+                const kx = player.x, kz = player.z, kr = player.rotY;
+                loadInnInterior(false);
+                player.x = kx; player.z = kz; player.rotY = kr;
+                if (playerMesh) playerMesh.position.set(player.x, 0, player.z);
+              }
+            }
+          }
+        ]
+      );
+    }
+
+    // Item #1: Expanded 1F Tavern Hall (currentFloor = -99, 17m x 14m) with Bar Counter, Dining Tables, Mercenary NPCs & Staircase to 2F!
+    function loadInnInterior(spawnAtStairsFrom2F = false) {
       clearWorld();
       portalCooldown = 1.3;
       currentFloor = -99;
       syncBgmPlayback();
+      generateTavernMercCandidates(false);
+
       scene.background.setHex(0x160f0a);
       scene.fog.color.setHex(0x160f0a);
-      scene.fog.density = 0.014;
+      scene.fog.density = 0.011;
       dirLight.color.setHex(0xffcf91);
-      dirLight.intensity = 0.92;
+      dirLight.intensity = 0.96;
       hemiLight.color.setHex(0xffe8b8);
-      hemiLight.intensity = 0.82;
+      hemiLight.intensity = 0.86;
 
-      document.getElementById('locationLabel').textContent = '🏨 晨曦大旅店 · 服務櫃台與客房';
+      document.getElementById('locationLabel').textContent = '🏨 晨曦大旅店 · 1F 冒險者酒館大廳';
       document.getElementById('bossBarContainer').classList.add('hidden');
       document.getElementById('stairCompassBadge').classList.add('hidden');
 
       const roomGroup = new THREE.Group();
 
-      // 1. Warm Oak Plank Floor (11.2m x 11.2m) & Plush Crimson/Gold Rugs
-      const floorMesh = new THREE.Mesh(new THREE.BoxGeometry(11.2, 0.25, 11.2), sharedMats.woodWarm);
+      // 1. Expanded Grand Tavern Oak Floor (17.2m wide x 14.0m deep) & Runner Carpets
+      const floorMesh = new THREE.Mesh(new THREE.BoxGeometry(17.2, 0.25, 14.0), sharedMats.woodWarm);
       floorMesh.position.y = -0.12;
       floorMesh.receiveShadow = true;
-      const lobbyRug = new THREE.Mesh(
-        new THREE.BoxGeometry(4.4, 0.05, 5.2),
+      const centerRug = new THREE.Mesh(
+        new THREE.BoxGeometry(3.2, 0.05, 11.4),
         new THREE.MeshStandardMaterial({ color: 0x991b1b, roughness: 0.85 })
       );
-      lobbyRug.position.set(-2.0, 0.03, 0.2);
-      const bedRug = new THREE.Mesh(
-        new THREE.BoxGeometry(4.6, 0.05, 7.6),
-        new THREE.MeshStandardMaterial({ color: 0x7c2d12, roughness: 0.85 })
-      );
-      bedRug.position.set(2.4, 0.03, -0.6);
-      roomGroup.add(floorMesh, lobbyRug, bedRug);
+      centerRug.position.set(0, 0.03, 0.4);
+      roomGroup.add(floorMesh, centerRug);
 
-      // 2. Interior Plaster & Timber Walls + Stone Hearth Fireplace on North Wall
-      const wallBack = new THREE.Mesh(new THREE.BoxGeometry(11.2, 4.4, 0.35), sharedMats.plaster);
-      wallBack.position.set(0, 2.2, -5.4);
-      const wallLeft = new THREE.Mesh(new THREE.BoxGeometry(0.35, 4.4, 11.2), sharedMats.plaster);
-      wallLeft.position.set(-5.4, 2.2, 0);
-      const wallRight = new THREE.Mesh(new THREE.BoxGeometry(0.35, 4.4, 11.2), sharedMats.plaster);
-      wallRight.position.set(5.4, 2.2, 0);
+      // 2. Expanded Half-Timbered Tavern Walls & Pillars
+      const wallBack = new THREE.Mesh(new THREE.BoxGeometry(17.2, 4.8, 0.38), sharedMats.plaster);
+      wallBack.position.set(0, 2.4, -6.8);
+      const wallLeft = new THREE.Mesh(new THREE.BoxGeometry(0.38, 4.8, 14.0), sharedMats.plaster);
+      wallLeft.position.set(-8.4, 2.4, 0);
+      const wallRight = new THREE.Mesh(new THREE.BoxGeometry(0.38, 4.8, 14.0), sharedMats.plaster);
+      wallRight.position.set(8.4, 2.4, 0);
       roomGroup.add(wallBack, wallLeft, wallRight);
 
-      // Cozy Fireplace on North Wall
-      const hearth = new THREE.Mesh(new THREE.BoxGeometry(2.4, 2.6, 0.9), sharedMats.stoneBase);
-      hearth.position.set(0, 1.3, -4.9);
-      const fireGlow = new THREE.Mesh(new THREE.ConeGeometry(0.42, 0.85, 7), new THREE.MeshBasicMaterial({ color: 0xff6b00 }));
-      fireGlow.position.set(0, 0.55, -4.65);
-      const hearthLight = new THREE.PointLight(0xff7b00, 1.8, 14);
-      hearthLight.position.set(0, 1.4, -4.2);
+      // Grand Stone Hearth Fireplace on North-East Wall
+      const hearth = new THREE.Mesh(new THREE.BoxGeometry(2.8, 3.0, 0.95), sharedMats.stoneBase);
+      hearth.position.set(2.2, 1.5, -6.2);
+      const fireGlow = new THREE.Mesh(new THREE.ConeGeometry(0.48, 0.95, 7), new THREE.MeshBasicMaterial({ color: 0xff6b00 }));
+      fireGlow.position.set(2.2, 0.6, -5.9);
+      const hearthLight = new THREE.PointLight(0xff7b00, 1.9, 16);
+      hearthLight.position.set(2.2, 1.6, -5.3);
       roomGroup.add(hearth, fireGlow, hearthLight);
 
-      // 3. LEFT SIDE: L-Shaped Wooden Reception Counter (旅館櫃台) + Bottle Shelves + Bell & Ledger
+      // 3. NORTH-WEST: L-Shaped Tavern Bar Counter + Wine Barrels + Innkeeper Eileen
       const counterGroup = new THREE.Group();
-      counterGroup.position.set(-2.7, 0, -1.6);
-      const frontDesk = new THREE.Mesh(new THREE.BoxGeometry(3.2, 1.08, 0.82), sharedMats.woodDark);
-      frontDesk.position.set(0, 0.54, 0.8);
+      counterGroup.position.set(-3.6, 0, -3.9);
+      const frontDesk = new THREE.Mesh(new THREE.BoxGeometry(4.4, 1.10, 0.86), sharedMats.woodDark);
+      frontDesk.position.set(0, 0.55, 0.9);
       frontDesk.castShadow = true;
-      const deskTop = new THREE.Mesh(new THREE.BoxGeometry(3.36, 0.10, 0.96), sharedMats.woodWarm);
-      deskTop.position.set(0, 1.10, 0.8);
-      const sideDesk = new THREE.Mesh(new THREE.BoxGeometry(0.82, 1.08, 2.2), sharedMats.woodDark);
-      sideDesk.position.set(-1.2, 0.54, -0.3);
-      // Guestbook Ledger & Golden Service Bell on the Counter
-      const ledger = new THREE.Mesh(new THREE.BoxGeometry(0.48, 0.06, 0.36), new THREE.MeshStandardMaterial({ color: 0xfef3c7, roughness: 0.7 }));
-      ledger.position.set(-0.35, 1.18, 0.8);
-      const bell = new THREE.Mesh(new THREE.ConeGeometry(0.14, 0.18, 12), sharedMats.goldMetal);
-      bell.position.set(0.55, 1.22, 0.8);
-      const deskLantern = new THREE.Mesh(new THREE.BoxGeometry(0.26, 0.38, 0.26), sharedMats.lanternGlow);
-      deskLantern.position.set(1.15, 1.32, 0.8);
-      // Back Shelf with Casks
-      const shelf = new THREE.Mesh(new THREE.BoxGeometry(2.8, 2.3, 0.45), sharedMats.woodDark);
-      shelf.position.set(0.1, 1.15, -1.35);
-      counterGroup.add(frontDesk, deskTop, sideDesk, ledger, bell, deskLantern, shelf);
+      const deskTop = new THREE.Mesh(new THREE.BoxGeometry(4.6, 0.10, 1.02), sharedMats.woodWarm);
+      deskTop.position.set(0, 1.12, 0.9);
+      const sideDesk = new THREE.Mesh(new THREE.BoxGeometry(0.86, 1.10, 2.5), sharedMats.woodDark);
+      sideDesk.position.set(-1.8, 0.55, -0.3);
+      const shelf = new THREE.Mesh(new THREE.BoxGeometry(4.0, 2.6, 0.50), sharedMats.woodDark);
+      shelf.position.set(0.2, 1.3, -1.6);
+      // Ale Barrels & Golden Bell
+      for (let b = 0; b < 3; b++) {
+        const cask = new THREE.Mesh(new THREE.CylinderGeometry(0.32, 0.32, 0.65, 10), sharedMats.woodWarm);
+        cask.rotation.x = Math.PI / 2;
+        cask.position.set(-1.0 + b * 1.1, 1.55, -1.45);
+        counterGroup.add(cask);
+      }
+      const bell = new THREE.Mesh(new THREE.ConeGeometry(0.15, 0.20, 12), sharedMats.goldMetal);
+      bell.position.set(0.95, 1.24, 0.9);
+      counterGroup.add(frontDesk, deskTop, sideDesk, shelf, bell);
       roomGroup.add(counterGroup);
 
-      // Innkeeper Eileen behind the Counter
+      // Innkeeper Eileen behind the Bar Counter
       const { root: innNpcRoot, marker: innNpcMarker } = buildRealisticVillagerMesh('herbalist');
-      innNpcRoot.position.set(-2.6, 0, -2.15);
+      innNpcRoot.position.set(-3.5, 0, -4.4);
       innNpcRoot.rotation.y = 0;
-      const counterSign = createOverheadSymbolSign('🛎️ 旅館櫃台 · 老闆娘艾琳 (20🪙 回滿血魔)', '#f59e0b', '#fef08a');
+      const counterSign = createOverheadSymbolSign('🍖 旅店掌櫃 艾琳 (飯店大餐祝福 / 請喝麥酒刷新傭兵)', '#f59e0b', '#fef08a');
       counterSign.position.y = 2.38;
       innNpcRoot.add(counterSign);
       entitiesGroup.add(innNpcRoot);
 
       interactables.push({
         type: 'inn_rest_counter',
-        x: -2.6,
-        z: -0.4,
+        x: -3.5,
+        z: -2.6,
         radius: 2.6,
         mesh: innNpcMarker,
-        prompt: `🛎️ 在「旅館櫃台」找老闆娘艾琳付 ${INN_REST_COST}🪙 住宿（100% 回滿 HP & MP）`
+        prompt: '🍺 與「老闆娘 艾琳」對話（1. 吃飯店大餐獲飽食祝福 · 2. 請全場喝麥酒刷新傭兵）'
       });
 
-      // 4. RIGHT SIDE: Two Cozy 3D Wooden Beds (舒適客房大床) with Headboards, Pillows & Quilts
-      function buildCozyInnBed(bx, bz, bedTitle) {
-        const bedG = new THREE.Group();
-        bedG.position.set(bx, 0, bz);
-        // Wooden Bed Frame & Headboard
-        const frame = new THREE.Mesh(new THREE.BoxGeometry(2.3, 0.42, 1.65), sharedMats.woodDark);
-        frame.position.y = 0.21;
-        frame.castShadow = true;
-        const headboard = new THREE.Mesh(new THREE.BoxGeometry(0.22, 1.35, 1.72), sharedMats.woodWarm);
-        headboard.position.set(1.08, 0.68, 0);
-        // White Mattress & Fluffy Pillow
-        const mattress = new THREE.Mesh(
-          new THREE.BoxGeometry(2.08, 0.24, 1.48),
-          new THREE.MeshStandardMaterial({ color: 0xf8fafc, roughness: 0.8 })
-        );
-        mattress.position.set(-0.04, 0.48, 0);
-        const pillow = new THREE.Mesh(
-          new THREE.BoxGeometry(0.45, 0.16, 1.15),
-          new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.7 })
-        );
-        pillow.position.set(0.68, 0.64, 0);
-        // Warm Crimson-Gold Quilt Blanket
-        const quilt = new THREE.Mesh(
-          new THREE.BoxGeometry(1.38, 0.27, 1.52),
-          new THREE.MeshStandardMaterial({ color: 0xdc2626, roughness: 0.75 })
-        );
-        quilt.position.set(-0.36, 0.49, 0);
-        // Bedside Nightstand & Warm Lamp
-        const stand = new THREE.Mesh(new THREE.BoxGeometry(0.55, 0.65, 0.55), sharedMats.woodDark);
-        stand.position.set(0.95, 0.32, -1.22);
-        const lamp = new THREE.Mesh(new THREE.BoxGeometry(0.24, 0.34, 0.24), sharedMats.lanternGlow);
-        lamp.position.set(0.95, 0.80, -1.22);
+      // 4. Four Round Oak Tavern Tables + Ale Mugs + 6 Recruitable Class Mercenaries!
+      const tableCoords = [
+        [-3.2, -0.6], [3.2, -0.6],
+        [-3.2,  2.5], [3.2,  2.5]
+      ];
+      tableCoords.forEach(([tx, tz]) => {
+        const tG = new THREE.Group();
+        tG.position.set(tx, 0, tz);
+        const top = new THREE.Mesh(new THREE.CylinderGeometry(1.05, 1.05, 0.10, 14), sharedMats.woodWarm);
+        top.position.y = 0.78;
+        top.castShadow = true;
+        const ped = new THREE.Mesh(new THREE.CylinderGeometry(0.22, 0.35, 0.76, 10), sharedMats.woodDark);
+        ped.position.y = 0.38;
+        const mug = new THREE.Mesh(new THREE.CylinderGeometry(0.11, 0.11, 0.22, 8), sharedMats.goldMetal);
+        mug.position.set(0.25, 0.94, 0.15);
+        tG.add(top, ped, mug);
+        roomGroup.add(tG);
+      });
 
-        const bedSign = createFloatingSign(`🛏️ ${bedTitle} · 按 F 躺下回滿 HP/MP (${INN_REST_COST}🪙)`, '#38bdf8', '#e0f2fe');
-        bedSign.position.set(0, 1.95, 0);
-        bedG.add(frame, headboard, mattress, pillow, quilt, stand, lamp, bedSign);
-        roomGroup.add(bedG);
-
-        const bedMarker = new THREE.Mesh(
-          new THREE.OctahedronGeometry(0.16, 0),
-          new THREE.MeshBasicMaterial({ color: 0x38bdf8 })
-        );
-        bedMarker.position.set(bx - 0.3, 1.25, bz);
-        roomGroup.add(bedMarker);
+      // Spawn the 6 Mercenary Candidates around the Tavern Tables (skip any currently hired in squad)
+      tavernMercCandidates.forEach((cand) => {
+        const isHired = player.hiredMercs.some((m) => m.rosterId === cand.rosterId);
+        const preset = getAvatarPreset(cand.presetId);
+        const built = buildCharacterModelFromPreset(preset, cand.w, cand.a, false);
+        built.root.position.set(cand.seatX, 0, cand.seatZ);
+        built.root.rotation.y = cand.seatRotY;
+        const hireCount = Number(player.mercHireCounts[cand.rosterId] || 0);
+        const priceObj = calcMercHirePrice(cand.level, hireCount);
+        const tagText = isHired
+          ? `${cand.icon} [Lv.${cand.level}] ${cand.name} (已入隊)`
+          : `${cand.icon} [Lv.${cand.level}] ${cand.name} · 雇用 ${priceObj.finalCost}🪙`;
+        const sign = createOverheadSymbolSign(tagText, isHired ? '#34d399' : '#fbbf24', isHired ? '#d1fae5' : '#fef08a');
+        sign.position.y = 2.32;
+        built.root.add(sign);
+        entitiesGroup.add(built.root);
 
         interactables.push({
-          type: 'inn_rest_bed',
-          bedTitle,
-          x: bx - 0.3,
-          z: bz,
-          radius: 2.35,
-          mesh: bedMarker,
-          prompt: `🛏️ 躺上「${bedTitle}」休息（花費 ${INN_REST_COST}🪙 立即 100% 回滿 HP & MP）`
+          type: 'tavern_merc_npc',
+          candidate: cand,
+          x: cand.seatX,
+          z: cand.seatZ,
+          radius: 2.15,
+          mesh: null,
+          prompt: `🤝 與【Lv.${cand.level} ${cand.name}】（${cand.classTitle}）交談 / 招募入隊 (${priceObj.finalCost}🪙)`
         });
+      });
+
+      // 5. NORTH-EAST (x = 6.2, z = -3.8): Grand Wooden Staircase Up to 2F Lodging & Hero's Private Room!
+      const stairsUpGroup = new THREE.Group();
+      stairsUpGroup.position.set(6.2, 0, -3.8);
+      for (let s = 0; s < 8; s++) {
+        const stepM = new THREE.Mesh(new THREE.BoxGeometry(2.2, 0.24, 0.45), s % 2 === 0 ? sharedMats.woodWarm : sharedMats.woodDark);
+        stepM.position.set(0, 0.12 + s * 0.24, 1.4 - s * 0.42);
+        stepM.castShadow = true;
+        stairsUpGroup.add(stepM);
       }
+      const railL = new THREE.Mesh(new THREE.BoxGeometry(0.14, 1.2, 3.6), sharedMats.woodDark);
+      railL.position.set(-1.05, 1.3, -0.1);
+      railL.rotation.x = 0.48;
+      stairsUpGroup.add(railL);
+      const up2FSign = createFloatingSign('⬆️ 上二樓：住宿客房 ＆ 主角專屬房間（床鋪/保管箱）', '#fbbf24', '#fef08a');
+      up2FSign.position.set(0, 2.85, 0.6);
+      stairsUpGroup.add(up2FSign);
+      roomGroup.add(stairsUpGroup);
 
-      buildCozyInnBed(2.9, -2.2, '一號舒適大床');
-      buildCozyInnBed(2.9, 1.2, '二號舒適大床');
+      interactables.push({
+        type: 'inn_stairs_to_2f',
+        autoEnter: true,
+        x: 6.2,
+        z: -2.4,
+        radius: 1.75,
+        mesh: null,
+        prompt: '⬆️ 走上二樓：前往主角專屬客房（床鋪休息 ＆ 專屬保管箱）'
+      });
 
-      // 5. Warm Overhead Chandelier Light & South Exit Door back to Village
-      const roomLight = new THREE.PointLight(0xffb703, 1.85, 20);
-      roomLight.position.set(0, 3.6, 0);
-      roomGroup.add(roomLight);
+      // 6. Warm Overhead Chandelier Lights & South Exit Door back to Village
+      const roomLight1 = new THREE.PointLight(0xffb703, 1.85, 22);
+      roomLight1.position.set(-3.0, 3.9, 0);
+      const roomLight2 = new THREE.PointLight(0xffb703, 1.85, 22);
+      roomLight2.position.set(3.0, 3.9, 0);
+      roomGroup.add(roomLight1, roomLight2);
 
       const exitMat = new THREE.Mesh(
-        new THREE.BoxGeometry(2.2, 0.1, 1.0),
+        new THREE.BoxGeometry(2.6, 0.1, 1.1),
         new THREE.MeshStandardMaterial({ color: 0xd97706, emissive: 0xb45309, emissiveIntensity: 0.45 })
       );
-      exitMat.position.set(0, 0.05, 4.6);
+      exitMat.position.set(0, 0.05, 6.2);
       const exitSign = createFloatingSign('🚪 離開晨曦大旅店返回村莊', '#38bdf8', '#e0f2fe');
-      exitSign.position.set(0, 2.3, 4.6);
+      exitSign.position.set(0, 2.3, 6.2);
       roomGroup.add(exitMat, exitSign);
       worldGroup.add(roomGroup);
 
@@ -4632,19 +5078,195 @@
         type: 'house_exit',
         autoEnter: true,
         x: 0,
-        z: 4.5,
-        radius: 1.45,
+        z: 6.1,
+        radius: 1.55,
         mesh: null,
         prompt: '🚪 離開晨曦大旅店返回山谷村莊'
       });
 
-      player.x = 0;
-      player.y = 0;
-      player.z = 2.6;
-      player.rotY = Math.PI;
+      if (spawnAtStairsFrom2F) {
+        player.x = 6.2;
+        player.y = 0;
+        player.z = -0.5;
+        player.rotY = 0;
+      } else {
+        player.x = 0;
+        player.y = 0;
+        player.z = 4.2;
+        player.rotY = Math.PI;
+      }
       resetPortalGuard(player.x, player.z);
       buildHeroMesh();
-      showToast(`🏨 歡迎光臨「晨曦大旅店」！靠近左側【櫃台】或右側【床鋪】按 F 即可付 ${INN_REST_COST}🪙 回滿血魔`);
+      rebuildActiveMercenaryMeshes();
+      showToast('🍺 歡迎來到「晨曦大旅店 1F 酒館大廳」！可找老闆娘享用餐點或招募最多 3 位各職業傭兵；右上樓梯可上 2F 專屬客房');
+    }
+
+    // Item #1, #6, #7, #8: Build 2F Lodging Floor (currentFloor = -98) with Hero's Private Room, Bed (Press F to heal directly) & Stash Box (Press F to store gear/gold)!
+    function loadInnSecondFloor() {
+      clearWorld();
+      portalCooldown = 1.3;
+      currentFloor = -98;
+      syncBgmPlayback();
+
+      scene.background.setHex(0x160f0a);
+      scene.fog.color.setHex(0x160f0a);
+      scene.fog.density = 0.011;
+      dirLight.color.setHex(0xffcf91);
+      dirLight.intensity = 0.96;
+      hemiLight.color.setHex(0xffe8b8);
+      hemiLight.intensity = 0.86;
+
+      document.getElementById('locationLabel').textContent = '🛏️ 晨曦大旅店 · 2F 住宿走廊與主角專屬客房';
+      document.getElementById('bossBarContainer').classList.add('hidden');
+      document.getElementById('stairCompassBadge').classList.add('hidden');
+
+      const roomGroup = new THREE.Group();
+
+      // 1. 2F Warm Timber Floor (15.6m x 12.4m) & Royal Blue/Crimson Hero Room Rug
+      const floorMesh = new THREE.Mesh(new THREE.BoxGeometry(15.6, 0.25, 12.4), sharedMats.woodWarm);
+      floorMesh.position.y = -0.12;
+      floorMesh.receiveShadow = true;
+      const heroRug = new THREE.Mesh(
+        new THREE.BoxGeometry(6.8, 0.05, 8.8),
+        new THREE.MeshStandardMaterial({ color: 0x1e3a8a, roughness: 0.82 })
+      );
+      heroRug.position.set(-3.4, 0.03, -0.4);
+      const hallRug = new THREE.Mesh(
+        new THREE.BoxGeometry(5.6, 0.05, 8.8),
+        new THREE.MeshStandardMaterial({ color: 0x7c2d12, roughness: 0.85 })
+      );
+      hallRug.position.set(3.6, 0.03, -0.4);
+      roomGroup.add(floorMesh, heroRug, hallRug);
+
+      // Outer 2F Walls & Partition Wall separating Hero's Private Suite (West) from Corridor & Guest Rooms (East)
+      const wallBack = new THREE.Mesh(new THREE.BoxGeometry(15.6, 4.4, 0.35), sharedMats.plaster);
+      wallBack.position.set(0, 2.2, -6.0);
+      const wallFront = new THREE.Mesh(new THREE.BoxGeometry(15.6, 4.4, 0.35), sharedMats.plaster);
+      wallFront.position.set(0, 2.2, 6.0);
+      const wallLeft = new THREE.Mesh(new THREE.BoxGeometry(0.35, 4.4, 12.4), sharedMats.plaster);
+      wallLeft.position.set(-7.6, 2.2, 0);
+      const wallRight = new THREE.Mesh(new THREE.BoxGeometry(0.35, 4.4, 12.4), sharedMats.plaster);
+      wallRight.position.set(7.6, 2.2, 0);
+
+      // Partition wall at x = 0.4 with an open doorway arch at z = 1.2
+      const partNorth = new THREE.Mesh(new THREE.BoxGeometry(0.28, 4.2, 5.2), sharedMats.woodDark);
+      partNorth.position.set(0.4, 2.1, -3.2);
+      const partSouth = new THREE.Mesh(new THREE.BoxGeometry(0.28, 4.2, 3.0), sharedMats.woodDark);
+      partSouth.position.set(0.4, 2.1, 4.3);
+      const doorSign = createFloatingSign('🔑 主角專屬客房（鎮長歐德林招待）', '#38bdf8', '#e0f2fe');
+      doorSign.position.set(0.4, 2.95, 1.2);
+      roomGroup.add(wallBack, wallFront, wallLeft, wallRight, partNorth, partSouth, doorSign);
+
+      // 2. HERO'S PRIVATE BED at (-4.6, -2.5) -> Item #8: Press F at bed to rest & recover HP/MP directly without opening a modal!
+      const bedG = new THREE.Group();
+      bedG.position.set(-4.6, 0, -2.5);
+      const frame = new THREE.Mesh(new THREE.BoxGeometry(2.6, 0.45, 1.85), sharedMats.woodDark);
+      frame.position.y = 0.22;
+      frame.castShadow = true;
+      const headboard = new THREE.Mesh(new THREE.BoxGeometry(0.24, 1.45, 1.92), sharedMats.woodWarm);
+      headboard.position.set(-1.18, 0.72, 0);
+      const mattress = new THREE.Mesh(new THREE.BoxGeometry(2.3, 0.26, 1.65), new THREE.MeshStandardMaterial({ color: 0xf8fafc, roughness: 0.8 }));
+      mattress.position.set(0.05, 0.50, 0);
+      const pillow = new THREE.Mesh(new THREE.BoxGeometry(0.48, 0.18, 1.25), new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.7 }));
+      pillow.position.set(-0.78, 0.68, 0);
+      const quilt = new THREE.Mesh(new THREE.BoxGeometry(1.55, 0.28, 1.70), new THREE.MeshStandardMaterial({ color: 0x2563eb, roughness: 0.75 }));
+      quilt.position.set(0.38, 0.52, 0);
+      const bedSign = createFloatingSign('🛏️ 主角專屬大床 · 按 F 直接休息回滿 HP & MP', '#4ade80', '#dcfce7');
+      bedSign.position.set(0, 2.15, 0);
+      bedG.add(frame, headboard, mattress, pillow, quilt, bedSign);
+      roomGroup.add(bedG);
+
+      const bedMarker = new THREE.Mesh(new THREE.OctahedronGeometry(0.18, 0), new THREE.MeshBasicMaterial({ color: 0x4ade80 }));
+      bedMarker.position.set(-4.2, 1.35, -2.5);
+      roomGroup.add(bedMarker);
+
+      interactables.push({
+        type: 'hero_private_bed',
+        x: -4.2,
+        z: -2.5,
+        radius: 2.5,
+        mesh: bedMarker,
+        prompt: '🛏️ 在「專屬房間床鋪」按 F 休息（立即 100% 回復 HP 與 MP）'
+      });
+
+      // 3. HERO'S PERSONAL STASH CHEST (保管箱) at (-4.6, 2.2) -> Item #7: Press F to store Equipment & Gold!
+      const stashGroup = new THREE.Group();
+      stashGroup.position.set(-4.6, 0, 2.2);
+      const chestBase = new THREE.Mesh(new THREE.BoxGeometry(1.45, 0.78, 0.95), sharedMats.woodDark);
+      chestBase.position.y = 0.39;
+      chestBase.castShadow = true;
+      const chestLid = new THREE.Mesh(new THREE.CylinderGeometry(0.48, 0.48, 1.45, 12, 1, false, 0, Math.PI), sharedMats.woodWarm);
+      chestLid.rotation.z = Math.PI / 2;
+      chestLid.position.y = 0.78;
+      const goldBand1 = new THREE.Mesh(new THREE.BoxGeometry(0.12, 0.85, 1.02), sharedMats.goldMetal);
+      goldBand1.position.set(-0.45, 0.44, 0);
+      const goldBand2 = new THREE.Mesh(new THREE.BoxGeometry(0.12, 0.85, 1.02), sharedMats.goldMetal);
+      goldBand2.position.set(0.45, 0.44, 0);
+      const lockPlate = new THREE.Mesh(new THREE.BoxGeometry(0.24, 0.30, 0.12), sharedMats.goldMetal);
+      lockPlate.position.set(0, 0.65, 0.48);
+      const stashSign = createFloatingSign('🧰 主角專屬保管箱 · 按 F 存放裝備與金幣', '#fbbf24', '#fef08a');
+      stashSign.position.set(0, 2.15, 0);
+      stashGroup.add(chestBase, chestLid, goldBand1, goldBand2, lockPlate, stashSign);
+      roomGroup.add(stashGroup);
+
+      const stashMarker = new THREE.Mesh(new THREE.OctahedronGeometry(0.18, 0), new THREE.MeshBasicMaterial({ color: 0xfbbf24 }));
+      stashMarker.position.set(-4.2, 1.35, 2.2);
+      roomGroup.add(stashMarker);
+
+      interactables.push({
+        type: 'hero_stash_box',
+        x: -4.2,
+        z: 2.2,
+        radius: 2.5,
+        mesh: stashMarker,
+        prompt: '🧰 按 F 開啟「專屬保管箱」（存放裝備與金幣，死亡回城不遺失）'
+      });
+
+      // Writing Desk, Bookshelf & Warm Lamp inside Hero's Suite
+      const bookshelf = new THREE.Mesh(new THREE.BoxGeometry(2.2, 2.6, 0.55), sharedMats.woodDark);
+      bookshelf.position.set(-2.2, 1.3, -5.4);
+      const studyTable = new THREE.Mesh(new THREE.BoxGeometry(1.6, 0.82, 0.9), sharedMats.woodWarm);
+      studyTable.position.set(-1.8, 0.41, 3.6);
+      roomGroup.add(bookshelf, studyTable);
+
+      // East Guest Room Decorative Beds & Stairs Down to 1F Tavern at (5.2, -3.2)
+      const stairsDownGroup = new THREE.Group();
+      stairsDownGroup.position.set(5.2, 0, -3.2);
+      for (let s = 0; s < 6; s++) {
+        const st = new THREE.Mesh(new THREE.BoxGeometry(2.2, 0.18, 0.45), s % 2 === 0 ? sharedMats.woodWarm : sharedMats.woodDark);
+        st.position.set(0, 0.08 - s * 0.03, 1.0 - s * 0.42);
+        stairsDownGroup.add(st);
+      }
+      const downSign = createFloatingSign('⬇️ 下樓返回 1F 酒館大廳', '#38bdf8', '#e0f2fe');
+      downSign.position.set(0, 2.35, 0.5);
+      stairsDownGroup.add(downSign);
+      roomGroup.add(stairsDownGroup);
+
+      interactables.push({
+        type: 'inn_stairs_to_1f',
+        autoEnter: true,
+        x: 5.2,
+        z: -2.0,
+        radius: 1.75,
+        mesh: null,
+        prompt: '⬇️ 走下樓梯返回 1F 酒館大廳'
+      });
+
+      const roomLight1 = new THREE.PointLight(0xffb703, 1.85, 20);
+      roomLight1.position.set(-3.5, 3.8, 0);
+      const roomLight2 = new THREE.PointLight(0xffb703, 1.65, 20);
+      roomLight2.position.set(3.8, 3.8, 0);
+      roomGroup.add(roomLight1, roomLight2);
+      worldGroup.add(roomGroup);
+
+      player.x = 3.2;
+      player.y = 0;
+      player.z = 0.8;
+      player.rotY = -Math.PI / 2;
+      resetPortalGuard(player.x, player.z);
+      buildHeroMesh();
+      rebuildActiveMercenaryMeshes();
+      showToast('🛏️ 已抵達「旅店二樓」！西側為鎮長為你安排的【主角專屬客房】，內有免費休息大床與保管箱');
     }
 
     // =========================================================================
@@ -5881,7 +6503,7 @@
       updateHudUI();
     }
 
-    // Item #3 (1.2): Bidirectional Town Portal Button & Portal Archway
+    // Item #13 (1.3): Bidirectional Town Portal at the Suburban Clearing Magic Circle (-15.5, 25.0) + Persistent across restarts!
     function useTownPortal() {
       if (currentFloor >= 1) {
         player.townPortalFloor = currentFloor;
@@ -5889,20 +6511,23 @@
         saveHeroProfileToStorage();
         loadMountainVillage(false);
         portalCooldown = 1.4;
-        player.x = 8.4;
-        player.z = 3.8;
+        player.x = -15.5;
+        player.z = 22.4;
+        player.rotY = Math.PI;
         player.y = getVillageWalkableHeight(player.x, player.z);
         if (playerMesh) playerMesh.position.set(player.x, player.y, player.z);
         resetPortalGuard(player.x, player.z);
+        rebuildActiveMercenaryMeshes();
         updateHudUI();
-        showToast(`🌀 已開啟回城傳送門返回村莊！補給完畢後走進廣場的「藍色傳送門」或按 T 即可直接回 B${player.townPortalFloor}`);
+        showToast(`🔮 已從城鎮西南郊區的「遠古魔法陣」開啟傳送門返回！補給後走進郊區魔法陣或按 T 即可回 B${player.townPortalFloor}（重開遊戲仍會保留）`);
       } else if (player.townPortalFloor && player.townPortalFloor >= 1) {
         const targetFl = player.townPortalFloor;
         playSound('levelup');
         loadMineFloor(targetFl, false);
-        showToast(`🌀 已透過傳送門直接返回 B${targetFl}！`);
+        rebuildActiveMercenaryMeshes();
+        showToast(`🔮 已透過郊區魔法陣傳送門直接返回 B${targetFl}！`);
       } else {
-        showToast('🌀 請先進入礦坑地城後，即可隨時使用「回城 (T)」開啟傳送門！');
+        showToast('🔮 請先進入礦坑地城後，即可隨時按「回城 (T)」在城鎮郊區魔法陣開啟傳送門！');
       }
     }
 
@@ -5985,6 +6610,48 @@
           qBox.innerHTML = activeQs.map((q) => {
             const st = q.status === 'ready' ? '<span class="text-emerald-300 font-bold">[可回報領獎!]</span>' : `(${q.progress}/${q.targetCount})`;
             return `<div>🔹 <strong>[B${q.floor}] ${q.title}</strong> ${st} — 第${q.houseIdx + 1}號屋 ${q.npcName}</div>`;
+          }).join('');
+        }
+      }
+
+      // Render Feast Blessing Badge (Item #9)
+      const feastBadge = document.getElementById('feastBuffHudBadge');
+      const feastTimer = document.getElementById('feastBuffTimerLabel');
+      if (feastBadge && feastTimer) {
+        if (hasFeastBuff()) {
+          const remSec = Math.max(0, Math.ceil((player.feastBuffUntil - Date.now()) / 1000));
+          const mm = String(Math.floor(remSec / 60)).padStart(2, '0');
+          const ss = String(remSec % 60).padStart(2, '0');
+          feastTimer.textContent = `${mm}:${ss}`;
+          feastBadge.classList.remove('hidden');
+        } else {
+          feastBadge.classList.add('hidden');
+        }
+      }
+
+      // Render Hired Mercenary Squad Status Strip (Items #2, #3, #11)
+      const mercBox = document.getElementById('mercSquadHudBox');
+      if (mercBox) {
+        if (!Array.isArray(player.hiredMercs) || player.hiredMercs.length === 0) {
+          mercBox.classList.add('hidden');
+        } else {
+          mercBox.classList.remove('hidden');
+          mercBox.innerHTML = player.hiredMercs.map((m, idx) => {
+            const remM = Math.floor(Math.max(0, m.remainingSec) / 60);
+            const remS = String(Math.floor(Math.max(0, m.remainingSec) % 60)).padStart(2, '0');
+            const hpPct = Math.max(0, Math.min(100, Math.round((m.hp / Math.max(1, m.maxHp)) * 100)));
+            const stateBadge = m.isDowned
+              ? `<button type="button" onclick="window.startRevivingDownedMerc(${idx})" class="px-1.5 py-0.5 rounded bg-red-800/90 border border-red-400 text-amber-200 font-bold animate-pulse">🆘 倒地! 點擊或按F耗1紅水救活(10s)</button>`
+              : `<span class="text-emerald-300 font-mono">${Math.ceil(m.hp)}/${m.maxHp} (${remM}:${remS})</span>`;
+            return `
+              <div class="flex items-center justify-between gap-2">
+                <span class="font-bold text-amber-200 truncate">${m.icon} Lv.${m.level} ${m.name}</span>
+                ${stateBadge}
+              </div>
+              <div class="w-full h-1.5 bg-stone-950 rounded-full overflow-hidden border border-stone-700">
+                <div class="h-full ${m.isDowned ? 'bg-red-700' : 'bg-emerald-500'}" style="width: ${m.isDowned ? 100 : hpPct}%;"></div>
+              </div>
+            `;
           }).join('');
         }
       }
@@ -6129,24 +6796,210 @@
       document.getElementById('invSelectedItemBox').innerHTML = `<span class="text-emerald-300 font-bold">✅ 已穿戴「${item.name}」！舊裝備已收回背包</span>`;
     }
 
+    // Item #5 (1.3): Dragon Quest (勇者鬥惡龍) Style Character-by-Character Typewriter with 0.1s (100ms) pause on punctuation!
     let activeDialogueLines = [];
     let activeDialogueIdx = 0;
+    let activeDialogueChoices = [];
+    let activeDialogueOnComplete = null;
+    let dqTypeTimer = null;
+    let dqIsTyping = false;
+    let dqCurrentFullLine = '';
+    let dqCurrentCharIdx = 0;
 
-    function openDialogue(name, role, icon, lines) {
-      activeDialogueLines = lines;
+    const DQ_PUNCTUATION_SET = new Set(['，', '。', '！', '？', '、', '：', '；', '…', ',', '.', '!', '?', ':', ';']);
+
+    function playDqTypeBlip() {
+      if (soundMuted) return;
+      try {
+        ensureAudio();
+        if (!audioCtx) return;
+        const now = audioCtx.currentTime;
+        const osc = audioCtx.createOscillator();
+        const gain = audioCtx.createGain();
+        osc.type = 'square';
+        osc.frequency.setValueAtTime(540 + (dqCurrentCharIdx % 3) * 45, now);
+        gain.gain.setValueAtTime(0.018, now);
+        gain.gain.exponentialRampToValueAtTime(0.001, now + 0.024);
+        osc.connect(gain);
+        gain.connect(audioCtx.destination);
+        osc.start(now);
+        osc.stop(now + 0.025);
+      } catch (e) {}
+    }
+
+    function stopDqTypewriter(revealAll = true) {
+      if (dqTypeTimer) {
+        clearTimeout(dqTypeTimer);
+        dqTypeTimer = null;
+      }
+      dqIsTyping = false;
+      const bodyEl = document.getElementById('dialogueBodyText');
+      const curEl = document.getElementById('dqCursorTriangle');
+      if (revealAll && bodyEl) {
+        bodyEl.textContent = dqCurrentFullLine;
+      }
+      if (curEl) curEl.classList.remove('hidden');
+      renderDialogueChoicesIfLastStep();
+    }
+
+    function renderDialogueChoicesIfLastStep() {
+      const box = document.getElementById('dialogueChoicesBox');
+      if (!box) return;
+      const isLast = activeDialogueIdx >= activeDialogueLines.length - 1;
+      if (isLast && Array.isArray(activeDialogueChoices) && activeDialogueChoices.length > 0 && !dqIsTyping) {
+        box.innerHTML = '';
+        activeDialogueChoices.forEach((ch) => {
+          const btn = document.createElement('button');
+          btn.type = 'button';
+          btn.className = 'gothic-btn px-4 py-2.5 rounded-xl text-xs sm:text-sm font-bold text-left border-amber-400/80 hover:border-amber-300 flex items-center justify-between gap-2';
+          btn.innerHTML = `<span>${ch.label}</span><span class="text-amber-300">▶</span>`;
+          btn.addEventListener('click', () => {
+            document.getElementById('dialoguePanel').classList.add('hidden');
+            if (typeof ch.action === 'function') ch.action();
+          });
+          box.appendChild(btn);
+        });
+        box.classList.remove('hidden');
+        box.classList.add('flex');
+      } else {
+        box.classList.add('hidden');
+        box.classList.remove('flex');
+      }
+    }
+
+    function stepDqTypewriter() {
+      const bodyEl = document.getElementById('dialogueBodyText');
+      if (!bodyEl) return;
+      if (dqCurrentCharIdx >= dqCurrentFullLine.length) {
+        stopDqTypewriter(true);
+        return;
+      }
+      const ch = dqCurrentFullLine[dqCurrentCharIdx];
+      dqCurrentCharIdx += 1;
+      bodyEl.textContent = dqCurrentFullLine.slice(0, dqCurrentCharIdx);
+      if (ch.trim() && dqCurrentCharIdx % 2 === 1) {
+        playDqTypeBlip();
+      }
+      // Item #5: 0.1 second (100ms) pause on punctuation marks; 32ms per normal character
+      const delayMs = DQ_PUNCTUATION_SET.has(ch) ? 100 : 32;
+      dqTypeTimer = setTimeout(stepDqTypewriter, delayMs);
+    }
+
+    function openDialogue(name, role, icon, lines, choices = [], onComplete = null) {
+      activeDialogueLines = Array.isArray(lines) && lines.length > 0 ? lines : ['「……」'];
       activeDialogueIdx = 0;
+      activeDialogueChoices = Array.isArray(choices) ? choices : [];
+      activeDialogueOnComplete = typeof onComplete === 'function' ? onComplete : null;
       document.getElementById('dialogueSpeakerName').textContent = name;
       document.getElementById('dialogueSpeakerRole').textContent = role;
       document.getElementById('dialogueSpeakerIcon').textContent = icon;
-      renderDialogueStep();
       document.getElementById('dialoguePanel').classList.remove('hidden');
+      renderDialogueStep();
     }
 
     function renderDialogueStep() {
-      document.getElementById('dialogueBodyText').textContent = activeDialogueLines[activeDialogueIdx];
+      if (dqTypeTimer) {
+        clearTimeout(dqTypeTimer);
+        dqTypeTimer = null;
+      }
+      dqCurrentFullLine = String(activeDialogueLines[activeDialogueIdx] || '');
+      dqCurrentCharIdx = 0;
+      dqIsTyping = true;
+      const bodyEl = document.getElementById('dialogueBodyText');
+      const curEl = document.getElementById('dqCursorTriangle');
+      if (bodyEl) bodyEl.textContent = '';
+      if (curEl) curEl.classList.add('hidden');
+      const box = document.getElementById('dialogueChoicesBox');
+      if (box) {
+        box.classList.add('hidden');
+        box.classList.remove('flex');
+      }
       document.getElementById('dialogueStepIndicator').textContent = `${activeDialogueIdx + 1} / ${activeDialogueLines.length}`;
       document.getElementById('nextDialogueBtn').textContent =
         activeDialogueIdx < activeDialogueLines.length - 1 ? '繼續對話 →' : '完成對話 ✓';
+      stepDqTypewriter();
+    }
+
+    // Item #7: Simple & Clear 2F Stash Box Modal (Deposit/Withdraw Gold & Store up to 20 Equipments)
+    const MAX_STASH_GEAR = 20;
+    function openStashModal() {
+      renderStashModal();
+      document.getElementById('stashModal').classList.remove('hidden');
+    }
+
+    function renderStashModal() {
+      if (!Array.isArray(player.stashBag)) player.stashBag = [];
+      player.stashGold = Math.max(0, Math.floor(player.stashGold || 0));
+      document.getElementById('stashCarryGoldLabel').textContent = player.gold;
+      document.getElementById('stashBankGoldLabel').textContent = player.stashGold;
+      document.getElementById('stashBagCountLabel').textContent = `${player.bag.length} / 24`;
+      document.getElementById('stashBoxCountLabel').textContent = `${player.stashBag.length} / ${MAX_STASH_GEAR}`;
+
+      const bagGrid = document.getElementById('stashBagGrid');
+      bagGrid.innerHTML = '';
+      if (player.bag.length === 0) {
+        bagGrid.innerHTML = `<div class="col-span-2 text-center py-6 text-xs text-stone-500">隨身背包目前沒有多餘裝備</div>`;
+      } else {
+        player.bag.forEach((item, idx) => {
+          const isW = item.category === 'weapon';
+          const card = document.createElement('button');
+          card.type = 'button';
+          card.className = 'p-2 rounded-xl bg-stone-900 border border-stone-700 hover:border-amber-400 text-left flex flex-col justify-between gap-1';
+          card.innerHTML = `
+            <div class="text-xs font-bold ${isW ? 'text-amber-200' : 'text-sky-200'} truncate">${isW ? '🗡️' : '🛡️'} ${item.name}</div>
+            <div class="flex items-center justify-between text-[10px] text-stone-400">
+              <span>${isW ? `攻+${item.dmg}` : `防+${item.def} HP+${item.hpBonus}`}</span>
+              <span class="text-amber-300 font-bold">存入 ➔</span>
+            </div>
+          `;
+          card.addEventListener('click', () => {
+            if (player.stashBag.length >= MAX_STASH_GEAR) {
+              showToast(`🧰 保管箱已滿（${MAX_STASH_GEAR}/${MAX_STASH_GEAR} 件）！`);
+              return;
+            }
+            const [moved] = player.bag.splice(idx, 1);
+            player.stashBag.push(moved);
+            playSound('potion');
+            saveHeroProfileToStorage();
+            renderStashModal();
+            updateHudUI();
+          });
+          bagGrid.appendChild(card);
+        });
+      }
+
+      const boxGrid = document.getElementById('stashBoxGrid');
+      boxGrid.innerHTML = '';
+      if (player.stashBag.length === 0) {
+        boxGrid.innerHTML = `<div class="col-span-2 text-center py-6 text-xs text-stone-500">保管箱內尚無存放裝備</div>`;
+      } else {
+        player.stashBag.forEach((item, idx) => {
+          const isW = item.category === 'weapon';
+          const card = document.createElement('button');
+          card.type = 'button';
+          card.className = 'p-2 rounded-xl bg-stone-900 border border-emerald-700/60 hover:border-emerald-400 text-left flex flex-col justify-between gap-1';
+          card.innerHTML = `
+            <div class="text-xs font-bold ${isW ? 'text-amber-200' : 'text-sky-200'} truncate">${isW ? '🗡️' : '🛡️'} ${item.name}</div>
+            <div class="flex items-center justify-between text-[10px] text-stone-400">
+              <span>⬅ 取出</span>
+              <span class="text-emerald-300">${isW ? `攻+${item.dmg}` : `防+${item.def}`}</span>
+            </div>
+          `;
+          card.addEventListener('click', () => {
+            if (player.bag.length >= 24) {
+              showToast('🎒 隨身背包已滿（24/24）！');
+              return;
+            }
+            const [moved] = player.stashBag.splice(idx, 1);
+            player.bag.push(moved);
+            playSound('potion');
+            saveHeroProfileToStorage();
+            renderStashModal();
+            updateHudUI();
+          });
+          boxGrid.appendChild(card);
+        });
+      }
     }
 
     // 4-Tab Shop Modal: Blacksmith (Lv.1-25 Weapons), Armorer (Lv.1-25 Armors), Potion Shop (3 Tiers), Black Market (Sell & 5x Buy!)
@@ -6399,11 +7252,24 @@
       } else if (inter.type === 'inn_door') {
         playSound('potion');
         lastVillageReturnPos = { x: inter.exitX, z: inter.exitZ, rotY: inter.exitRotY };
-        loadInnInterior();
+        loadInnInterior(false);
+      } else if (inter.type === 'inn_stairs_to_2f') {
+        playSound('potion');
+        loadInnSecondFloor();
+      } else if (inter.type === 'inn_stairs_to_1f') {
+        playSound('potion');
+        loadInnInterior(true);
       } else if (inter.type === 'inn_rest_counter') {
-        restAtVillageInn('旅館服務櫃台');
-      } else if (inter.type === 'inn_rest_bed') {
-        restAtVillageInn(inter.bedTitle || '旅店舒適大床');
+        openInnkeeperEileenDialogue();
+      } else if (inter.type === 'tavern_merc_npc') {
+        openTavernMercRecruitDialogue(inter.candidate);
+      } else if (inter.type === 'hero_private_bed') {
+        restAtHeroPrivateBed();
+      } else if (inter.type === 'hero_stash_box') {
+        playSound('potion');
+        openStashModal();
+      } else if (inter.type === 'revive_downed_merc') {
+        window.startRevivingDownedMerc(inter.mercIdx);
       } else if (inter.type === 'house_door') {
         playSound('potion');
         lastVillageReturnPos = { x: inter.exitX, z: inter.exitZ, rotY: inter.exitRotY };
@@ -6783,15 +7649,106 @@
     document.getElementById('interactTriggerBtn').addEventListener('click', triggerInteraction);
 
     document.getElementById('closeDialogueBtn').addEventListener('click', () => {
+      stopDqTypewriter(true);
       document.getElementById('dialoguePanel').classList.add('hidden');
+      if (typeof activeDialogueOnComplete === 'function') {
+        const cb = activeDialogueOnComplete;
+        activeDialogueOnComplete = null;
+        cb();
+      }
     });
     document.getElementById('nextDialogueBtn').addEventListener('click', () => {
+      if (dqIsTyping) {
+        // First click while typing finishes revealing the current line immediately
+        stopDqTypewriter(true);
+        return;
+      }
       if (activeDialogueIdx < activeDialogueLines.length - 1) {
         activeDialogueIdx += 1;
         renderDialogueStep();
       } else {
         document.getElementById('dialoguePanel').classList.add('hidden');
+        if (typeof activeDialogueOnComplete === 'function') {
+          const cb = activeDialogueOnComplete;
+          activeDialogueOnComplete = null;
+          cb();
+        }
       }
+    });
+
+    // Stash Box Modal Button Bindings (Item #7)
+    document.getElementById('closeStashModalBtn').addEventListener('click', () => {
+      document.getElementById('stashModal').classList.add('hidden');
+    });
+    document.getElementById('stashDep100Btn').addEventListener('click', () => {
+      const amt = Math.min(player.gold, 100);
+      if (amt <= 0) { showToast('🪙 身上沒有可存入的金幣'); return; }
+      player.gold -= amt;
+      player.stashGold = (player.stashGold || 0) + amt;
+      playSound('potion');
+      saveHeroProfileToStorage();
+      renderStashModal();
+      updateHudUI();
+    });
+    document.getElementById('stashDepAllBtn').addEventListener('click', () => {
+      if (player.gold <= 0) { showToast('🪙 身上沒有可存入的金幣'); return; }
+      const amt = player.gold;
+      player.gold = 0;
+      player.stashGold = (player.stashGold || 0) + amt;
+      playSound('levelup');
+      saveHeroProfileToStorage();
+      renderStashModal();
+      updateHudUI();
+      showToast(`🏦 已將隨身 ${amt}🪙 全部鎖入二樓保管箱！`);
+    });
+    document.getElementById('stashWith100Btn').addEventListener('click', () => {
+      const amt = Math.min(player.stashGold || 0, 100);
+      if (amt <= 0) { showToast('🏦 保管箱內沒有金幣可取出'); return; }
+      player.stashGold -= amt;
+      player.gold += amt;
+      playSound('potion');
+      saveHeroProfileToStorage();
+      renderStashModal();
+      updateHudUI();
+    });
+    document.getElementById('stashWithAllBtn').addEventListener('click', () => {
+      const amt = player.stashGold || 0;
+      if (amt <= 0) { showToast('🏦 保管箱內沒有金幣可取出'); return; }
+      player.stashGold = 0;
+      player.gold += amt;
+      playSound('levelup');
+      saveHeroProfileToStorage();
+      renderStashModal();
+      updateHudUI();
+      showToast(`👛 已從保管箱取出全部 ${amt}🪙！`);
+    });
+
+    // Mercenary 10-Minute Renewal Modal Bindings (Item #3)
+    document.getElementById('confirmMercRenewBtn').addEventListener('click', () => {
+      document.getElementById('mercRenewModal').classList.add('hidden');
+      if (!pendingRenewalMerc) return;
+      const m = pendingRenewalMerc;
+      pendingRenewalMerc = null;
+      const hCount = Number(player.mercHireCounts[m.rosterId] || 1);
+      const priceObj = calcMercHirePrice(m.level, hCount);
+      if (player.gold < priceObj.finalCost) {
+        playSound('hurt');
+        showToast(`🪙 金幣不足（需 ${priceObj.finalCost}🪙），無法為【${m.name}】加價續約！`);
+        return;
+      }
+      player.gold -= priceObj.finalCost;
+      player.mercHireCounts[m.rosterId] = hCount + 1;
+      m.remainingSec += MERC_DURATION_SEC;
+      m.warned10Min = false;
+      m.hp = m.maxHp;
+      playSound('win');
+      saveHeroProfileToStorage();
+      updateHudUI();
+      showToast(`🤝 已花費 ${priceObj.finalCost}🪙 為【Lv.${m.level} ${m.name}】加價續約 1 小時！（累計僱用 ${hCount + 1} 次）`);
+    });
+    document.getElementById('cancelMercRenewBtn').addEventListener('click', () => {
+      document.getElementById('mercRenewModal').classList.add('hidden');
+      pendingRenewalMerc = null;
     });
 
     document.getElementById('closeShopBtn').addEventListener('click', () => {
@@ -6834,34 +7791,109 @@
       showToast(`☀️ 已切換山谷村莊時段：${TIME_PRESETS[currentTimePresetIdx].name}（仍會隨大鐘時間自然流轉）`);
     });
 
-    // Item #9: Option A - Wait for Companion/Teammate Revive (No Gold Loss!)
-    document.getElementById('waitReviveBtn').addEventListener('click', () => {
+    // Item #10 & #11 (1.3): 10-Second Mercenary Rescue OR Town Respawn at Suburban Magic Circle (Losing 100% of Carried Gold!)
+    let heroRescueInterval = null;
+    function triggerHeroDownedState() {
+      const deathEl = document.getElementById('deathScreen');
+      if (!deathEl || !deathEl.classList.contains('hidden')) return;
+      if (heroRescueInterval) { clearInterval(heroRescueInterval); heroRescueInterval = null; }
+      deathEl.classList.remove('hidden');
+
+      const aliveMerc = (player.hiredMercs || []).find((m) => !m.isDowned && m.remainingSec > 0);
       const waitBtn = document.getElementById('waitReviveBtn');
-      const descEl = document.getElementById('deathStatusDesc');
-      waitBtn.disabled = true;
-      descEl.textContent = '🤝 已發出求救信號！同伴／救援隊正在趕來為你施展復甦術（3 秒後原地復活，不損失金幣）...';
-      setTimeout(() => {
+      const rescueBox = document.getElementById('deathMercRescueBox');
+      const rescueText = document.getElementById('deathMercRescueText');
+      const rescueBar = document.getElementById('deathMercRescueBar');
+
+      if (aliveMerc) {
+        // Automatic 10-second rescue by surviving hired mercenary!
+        waitBtn.textContent = `🤝 【${aliveMerc.name}】正在施展 10 秒救援（保住隨身金幣）`;
+        waitBtn.disabled = true;
+        if (rescueBox) rescueBox.classList.remove('hidden');
+        let elapsedSec = 0;
+        heroRescueInterval = setInterval(() => {
+          elapsedSec += 0.2;
+          const pct = Math.min(100, (elapsedSec / 10.0) * 100);
+          if (rescueBar) rescueBar.style.width = `${pct}%`;
+          if (rescueText) rescueText.textContent = `🤝 你的傭兵【${aliveMerc.name}】正在為你急救... 剩餘 ${(Math.max(0, 10 - elapsedSec)).toFixed(1)} 秒`;
+          if (elapsedSec >= 10.0) {
+            clearInterval(heroRescueInterval);
+            heroRescueInterval = null;
+            waitBtn.disabled = false;
+            if (rescueBox) rescueBox.classList.add('hidden');
+            deathEl.classList.add('hidden');
+            player.hp = Math.round(player.maxHp * 0.70);
+            player.mp = Math.round(player.maxMp * 0.70);
+            playSound('heal');
+            spawnHitParticles(player.x, player.y + 1.2, player.z, 0x4ade80, 24);
+            spawnFloatingText(player.x, player.y + 2.0, player.z, `🤝 ${aliveMerc.name} 救援成功！(保住隨身金幣)`, '#4ade80', true);
+            updateHudUI();
+          }
+        }, 200);
+      } else {
         waitBtn.disabled = false;
-        descEl.textContent = '你可以選擇呼叫同伴／救援隊原地復活（不損失任何金幣），或立即返回山中小村莊復活（損失 50% 隨身金幣）。';
-        document.getElementById('deathScreen').classList.add('hidden');
-        player.hp = Math.round(player.maxHp * 0.65);
-        player.mp = Math.round(player.maxMp * 0.65);
-        playSound('heal');
-        spawnHitParticles(player.x, player.y + 1.2, player.z, 0x4ade80, 22);
-        spawnFloatingText(player.x, player.y + 2.0, player.z, '🤝 同伴救援成功！(無金幣損失)', '#4ade80', true);
-        updateHudUI();
-      }, 2400);
+        waitBtn.textContent = '🤝 呼叫同伴 10 秒原地救援（保住隨身金幣）';
+        if (rescueBox) rescueBox.classList.add('hidden');
+      }
+    }
+
+    document.getElementById('waitReviveBtn').addEventListener('click', () => {
+      if (heroRescueInterval) return;
+      const waitBtn = document.getElementById('waitReviveBtn');
+      const rescueBox = document.getElementById('deathMercRescueBox');
+      const rescueText = document.getElementById('deathMercRescueText');
+      const rescueBar = document.getElementById('deathMercRescueBar');
+      waitBtn.disabled = true;
+      if (rescueBox) rescueBox.classList.remove('hidden');
+      let elapsedSec = 0;
+      heroRescueInterval = setInterval(() => {
+        elapsedSec += 0.2;
+        const pct = Math.min(100, (elapsedSec / 10.0) * 100);
+        if (rescueBar) rescueBar.style.width = `${pct}%`;
+        if (rescueText) rescueText.textContent = `🤝 正在施展 10 秒緊急復甦術... 剩餘 ${(Math.max(0, 10 - elapsedSec)).toFixed(1)} 秒`;
+        if (elapsedSec >= 10.0) {
+          clearInterval(heroRescueInterval);
+          heroRescueInterval = null;
+          waitBtn.disabled = false;
+          if (rescueBox) rescueBox.classList.add('hidden');
+          document.getElementById('deathScreen').classList.add('hidden');
+          player.hp = Math.round(player.maxHp * 0.65);
+          player.mp = Math.round(player.maxMp * 0.65);
+          playSound('heal');
+          spawnHitParticles(player.x, player.y + 1.2, player.z, 0x4ade80, 22);
+          spawnFloatingText(player.x, player.y + 2.0, player.z, '🤝 10秒救援成功！(保住隨身金幣)', '#4ade80', true);
+          updateHudUI();
+        }
+      }, 200);
     });
 
-    // Item #9: Option B - Town Respawn (50% Gold Penalty!)
+    // Item #10 & #13: Direct Town Respawn -> Lose 100% of carried gold (stashGold is safe!) & respawn at Suburban Magic Circle!
     document.getElementById('respawnBtn').addEventListener('click', () => {
+      if (heroRescueInterval) {
+        clearInterval(heroRescueInterval);
+        heroRescueInterval = null;
+      }
       document.getElementById('deathScreen').classList.add('hidden');
-      const lostGold = Math.floor(player.gold * 0.5);
-      player.gold = Math.max(0, player.gold - lostGold);
+      const lostGold = player.gold;
+      player.gold = 0; // Lose 100% of carried gold!
+      if (currentFloor >= 1) {
+        player.townPortalFloor = currentFloor;
+      }
       recalcPlayerMaxStats(true);
+      if (Array.isArray(player.hiredMercs)) {
+        player.hiredMercs.forEach((m) => { m.isDowned = false; m.hp = m.maxHp; });
+      }
       saveHeroProfileToStorage();
       loadMountainVillage(false);
-      showToast(`🏰 已於山中小村莊復活（損失一半隨身金幣 -${lostGold}🪙）`);
+      player.x = -15.5;
+      player.z = 22.4;
+      player.rotY = Math.PI;
+      player.y = getVillageWalkableHeight(player.x, player.z);
+      if (playerMesh) playerMesh.position.set(player.x, player.y, player.z);
+      resetPortalGuard(player.x, player.z);
+      rebuildActiveMercenaryMeshes();
+      updateHudUI();
+      showToast(`🔮 已於城鎮郊區魔法陣復活（遺失身上所有金幣 -${lostGold}🪙；二樓保管箱內的 ${player.stashGold || 0}🪙 完好保存）`);
     });
 
     document.getElementById('returnTownAfterWinBtn').addEventListener('click', () => {
@@ -7463,47 +8495,91 @@
       });
     }
 
-    function toggleAiCompanions() {
-      aiPartyEnabled = !aiPartyEnabled;
+    // Item #3: Replace old 'Summon 3 AI Teammates' with Tavern Mercenary Recruitment (up to 3 Mercenaries, 1 Hour Duration, 10-Min Warning & 10s Potion Revival!)
+    let activeMercReviveTask = null; // { mercIdx, timer: 10.0 }
+
+    function rebuildActiveMercenaryMeshes() {
       for (const bot of aiCompanions) {
-        entitiesGroup.remove(bot.meshObj.root);
+        if (bot.meshObj && bot.meshObj.root) entitiesGroup.remove(bot.meshObj.root);
       }
       aiCompanions = [];
+      if (!Array.isArray(player.hiredMercs)) player.hiredMercs = [];
+      aiPartyEnabled = player.hiredMercs.length > 0;
 
-      if (aiPartyEnabled) {
-        const specs = [
-          { name: '聖殿騎士·亞瑟', w: 3, a: 3, ox: -2.0, oz: 1.8, msg: '⚔️ 聖光與你同在！' },
-          { name: '符文劍士·艾莉亞', w: 3, a: 2, ox: 2.0, oz: 1.8, msg: '🔥 準備集火魔物！' },
-          { name: '重錘戰士·布洛克', w: 2, a: 3, ox: 0.0, oz: 2.8, msg: '🛡️ 我來扛前排！' }
-        ];
-        specs.forEach((sp, idx) => {
-          const meshObj = buildRemoteAdventurerMesh(sp.w, sp.a, `[Lv.${player.level + 1}] ${sp.name}`, sp.msg, true);
-          const bx = player.x + sp.ox;
-          const bz = player.z + sp.oz;
-          const by = getVillageWalkableHeight(bx, bz);
-          meshObj.root.position.set(bx, by, bz);
-          entitiesGroup.add(meshObj.root);
-          aiCompanions.push({
-            name: sp.name,
-            x: bx,
-            y: by,
-            z: bz,
-            ox: sp.ox,
-            oz: sp.oz,
-            walkPhase: idx * 1.5,
-            atkCd: 0,
-            meshObj
-          });
+      player.hiredMercs.forEach((m, idx) => {
+        const meshObj = buildRemoteAdventurerMesh(
+          m.w || 3,
+          m.a || 2,
+          `${m.icon || '⚔️'} [Lv.${m.level}] ${m.name}`,
+          m.isDowned ? '🆘 倒地待援(按F耗1紅水救活)' : `${m.classTitle}`,
+          true,
+          m.presetId || 'paladin_m'
+        );
+        const bx = player.x + (m.ox ?? (-1.8 + idx * 1.8));
+        const bz = player.z + (m.oz ?? 2.0);
+        const by = getVillageWalkableHeight(bx, bz);
+        meshObj.root.position.set(bx, by, bz);
+        if (m.isDowned) meshObj.root.rotation.x = -Math.PI / 2;
+        entitiesGroup.add(meshObj.root);
+        aiCompanions.push({
+          mercRef: m,
+          mercIdx: idx,
+          name: m.name,
+          x: bx,
+          y: by,
+          z: bz,
+          ox: m.ox ?? (-1.8 + idx * 1.8),
+          oz: m.oz ?? 2.0,
+          walkPhase: idx * 1.5,
+          atkCd: 0,
+          meshObj
         });
-        document.getElementById('toggleAiPartyBtn').textContent = '🤖 解散 AI 共鬥隊友';
-        showToast('🤝 已召喚 3 位等身比例 AI 共鬥同伴！他們會跟隨你過橋並自動協助攻擊礦坑魔物');
-      } else {
-        document.getElementById('toggleAiPartyBtn').textContent = '🤖 召喚 3 位 AI 共鬥隊友（單人預覽多人效果）';
-        showToast('👋 已解散 AI 共鬥同伴');
-      }
+      });
       renderMpPlayerList();
+      updateHudUI();
     }
 
+    // Item #11: Spend 1 HP Potion and 10 seconds to revive a downed mercenary!
+    window.startRevivingDownedMerc = function(mercIdx) {
+      const m = player.hiredMercs && player.hiredMercs[mercIdx];
+      if (!m || !m.isDowned) return;
+      if (activeMercReviveTask) {
+        showToast('⏳ 正在施展復甦術中，請稍候...');
+        return;
+      }
+      // Find any available HP potion (active tier first, then hp1, hp2, hp3)
+      const activeKey = 'hp' + (player.activeHpTier || 1);
+      let useKey = null;
+      if ((player.potions[activeKey] || 0) > 0) useKey = activeKey;
+      else if ((player.potions.hp1 || 0) > 0) useKey = 'hp1';
+      else if ((player.potions.hp2 || 0) > 0) useKey = 'hp2';
+      else if ((player.potions.hp3 || 0) > 0) useKey = 'hp3';
+
+      if (!useKey) {
+        playSound('hurt');
+        showToast('🧪 身上沒有任何生命藥水（紅水）！無法救活倒地的傭兵，請先回村莊購買紅水！');
+        return;
+      }
+
+      player.potions[useKey] -= 1;
+      playSound('potion');
+      updateHudUI();
+      activeMercReviveTask = { mercIdx, merc: m, elapsed: 0, duration: 10.0 };
+      const banner = document.getElementById('reviveProgressBanner');
+      if (banner) banner.classList.remove('hidden');
+      showToast(`🧪 已消耗 1 瓶【${POTIONS_DB[useKey].name}】，開始為【${m.name}】進行 10 秒急救！`);
+    };
+
+    function toggleAiCompanions() {
+      document.getElementById('mpModal').classList.add('hidden');
+      if (currentFloor !== -99) {
+        lastVillageReturnPos = { x: 11.5, z: -1.55, rotY: 0 };
+        loadInnInterior(false);
+      }
+      showToast('🍺 已帶你來到「晨曦大旅店 1F 酒館大廳」！走近桌邊的各職業傭兵按 F 即可招募（最多 3 人）');
+    }
+
+    let mercHudTickAccum = 0;
     function updateMultiplayerAndBots(dt) {
       broadcastMyState(false);
 
@@ -7547,45 +8623,158 @@
         }
       });
 
-      // Update AI Co-op Companions (Follow Player & Attack Nearby Monsters!)
+      // Handle 10-Second Downed Mercenary Revival Progress Bar (Item #11)
+      if (activeMercReviveTask) {
+        activeMercReviveTask.elapsed += dt;
+        const pct = Math.min(100, (activeMercReviveTask.elapsed / activeMercReviveTask.duration) * 100);
+        const rem = Math.max(0, activeMercReviveTask.duration - activeMercReviveTask.elapsed);
+        const titleEl = document.getElementById('reviveProgressTitle');
+        const fillEl = document.getElementById('reviveProgressFill');
+        const subEl = document.getElementById('reviveProgressSub');
+        if (titleEl) titleEl.textContent = `🧪 正在救活【${activeMercReviveTask.merc.name}】...`;
+        if (fillEl) fillEl.style.width = `${pct}%`;
+        if (subEl) subEl.textContent = `剩餘 ${rem.toFixed(1)} 秒`;
+
+        if (activeMercReviveTask.elapsed >= activeMercReviveTask.duration) {
+          const m = activeMercReviveTask.merc;
+          m.isDowned = false;
+          m.hp = Math.round(m.maxHp * 0.80);
+          activeMercReviveTask = null;
+          const banner = document.getElementById('reviveProgressBanner');
+          if (banner) banner.classList.add('hidden');
+          // Remove downed interactable
+          interactables = interactables.filter((it) => !(it.type === 'revive_downed_merc' && it.mercRef === m));
+          rebuildActiveMercenaryMeshes();
+          playSound('win');
+          spawnHitParticles(player.x, player.y + 1.2, player.z, 0x4ade80, 24);
+          spawnFloatingText(player.x, player.y + 2.0, player.z, `✨ ${m.name} 重新站起來了！`, '#4ade80', true);
+          saveHeroProfileToStorage();
+          updateHudUI();
+        }
+      }
+
+      // Update Hired Tavern Mercenaries (Items #2, #3, #11): 1-Hour Contract Timer, 10-Min Warning, Combat & Downed State!
+      if (!Array.isArray(player.hiredMercs)) player.hiredMercs = [];
+      if (aiCompanions.length !== player.hiredMercs.length) {
+        rebuildActiveMercenaryMeshes();
+      }
+
+      for (let i = player.hiredMercs.length - 1; i >= 0; i--) {
+        const m = player.hiredMercs[i];
+        m.remainingSec = Math.max(0, (m.remainingSec ?? MERC_DURATION_SEC) - dt);
+
+        // Item #3: Warn when <= 10 minutes (600s) remaining if player wants to pay to extend!
+        if (m.remainingSec <= MERC_WARN_REMAIN_SEC && m.remainingSec > 0 && !m.warned10Min) {
+          m.warned10Min = true;
+          pendingRenewalMerc = m;
+          const hCount = Number(player.mercHireCounts[m.rosterId] || 1);
+          const priceObj = calcMercHirePrice(m.level, hCount);
+          const descEl = document.getElementById('mercRenewDesc');
+          if (descEl) {
+            descEl.innerHTML = `你的傭兵夥伴 <strong>【Lv.${m.level} ${m.name}】</strong> 契約時間只剩下 <strong>10 分鐘</strong>！<br>是否要花費 <strong class="text-amber-300">${priceObj.finalCost}🪙</strong>（累計僱用 ${hCount} 次 · ${getMercDiscountLabel(hCount)}）加價續約 1 小時？`;
+          }
+          document.getElementById('mercRenewModal').classList.remove('hidden');
+        }
+
+        if (m.remainingSec <= 0) {
+          showToast(`👋 傭兵【${m.name}】的 1 小時契約時間已屆滿，向你道別後返回了晨曦酒館。`);
+          player.hiredMercs.splice(i, 1);
+          rebuildActiveMercenaryMeshes();
+          saveHeroProfileToStorage();
+          continue;
+        }
+      }
+
       for (const bot of aiCompanions) {
+        const m = bot.mercRef;
+        if (!m) continue;
         if (!bot.meshObj.root.parent) entitiesGroup.add(bot.meshObj.root);
+
+        if (m.isDowned) {
+          bot.meshObj.root.rotation.x = -Math.PI / 2;
+          bot.meshObj.root.position.set(bot.x, bot.y + 0.25, bot.z);
+          // Ensure an interactable exists so pressing F near downed mercenary revives them!
+          let hasInter = interactables.some((it) => it.type === 'revive_downed_merc' && it.mercRef === m);
+          if (!hasInter) {
+            interactables.push({
+              type: 'revive_downed_merc',
+              mercRef: m,
+              mercIdx: bot.mercIdx,
+              x: bot.x,
+              z: bot.z,
+              radius: 2.8,
+              mesh: null,
+              prompt: `🧪 按 F 消耗 1 瓶生命藥水救活【${m.name}】（需時 10 秒）`
+            });
+          }
+          continue;
+        } else {
+          bot.meshObj.root.rotation.x = 0;
+        }
+
         let tx = player.x + bot.ox;
         let tz = player.z + bot.oz;
         let nearestEn = null;
-        let minEnDist = 5.5;
+        let minEnDist = 6.5;
         for (const en of enemies) {
+          if (en.isDownedCorpse) continue;
           const d = Math.hypot(en.x - bot.x, en.z - bot.z);
           if (d < minEnDist) {
             minEnDist = d;
             nearestEn = en;
           }
         }
-        if (nearestEn) {
+        if (nearestEn && currentFloor >= 1) {
           tx = nearestEn.x;
           tz = nearestEn.z;
         }
         const dx = tx - bot.x;
         const dz = tz - bot.z;
         const dist = Math.hypot(dx, dz);
-        if (dist > 1.35) {
-          const spd = 5.8;
-          bot.x += (dx / dist) * spd * dt;
-          bot.z += (dz / dist) * spd * dt;
+        if (dist > 22.0) {
+          bot.x = player.x + bot.ox;
+          bot.z = player.z + bot.oz;
+        } else if (dist > 1.35) {
+          const spd = 6.0;
+          const nx = bot.x + (dx / dist) * spd * dt;
+          const nz = bot.z + (dz / dist) * spd * dt;
+          if (isWalkable(nx, bot.z)) bot.x = nx;
+          if (isWalkable(bot.x, nz)) bot.z = nz;
           bot.y = getVillageWalkableHeight(bot.x, bot.z);
           bot.meshObj.root.rotation.y = Math.atan2(dx, dz);
           bot.walkPhase += dt * 10;
           bot.meshObj.leftLeg.rotation.x = Math.sin(bot.walkPhase) * 0.45;
           bot.meshObj.rightLeg.rotation.x = -Math.sin(bot.walkPhase) * 0.45;
         }
+        bot.y = getVillageWalkableHeight(bot.x, bot.z);
         bot.meshObj.root.position.set(bot.x, bot.y, bot.z);
 
         if (bot.atkCd > 0) bot.atkCd -= dt;
-        if (nearestEn && minEnDist <= 2.3 && bot.atkCd <= 0) {
-          bot.atkCd = 1.1;
-          bot.meshObj.rightArm.rotation.x = -1.2;
-          setTimeout(() => { if (bot.meshObj) bot.meshObj.rightArm.rotation.x = 0; }, 180);
-          damageEnemy(nearestEn, Math.max(4, Math.round(effDmg() * 0.45)), false);
+        if (nearestEn && minEnDist <= 2.4 && bot.atkCd <= 0 && currentFloor >= 1) {
+          bot.atkCd = 1.05;
+          bot.meshObj.rightArm.rotation.x = -1.25;
+          setTimeout(() => { if (bot.meshObj && bot.meshObj.rightArm) bot.meshObj.rightArm.rotation.x = 0; }, 180);
+          damageEnemy(nearestEn, Math.max(4, Math.round(m.atk || effDmg() * 0.65)), false);
+          // Monsters also counter-attack the mercenary in melee!
+          if (Math.random() < 0.35 && !m.isDowned) {
+            const mTaken = Math.max(1, Math.round(nearestEn.dmg * 0.75));
+            m.hp = Math.max(0, m.hp - mTaken);
+            spawnFloatingText(bot.x, bot.y + 1.9, bot.z, `${m.name} -${mTaken}`, '#fb923c', false);
+            if (m.hp <= 0) {
+              m.isDowned = true;
+              playSound('hurt');
+              showToast(`🆘 傭兵【${m.name}】重傷倒地！請靠近按 F（或點擊左上角隊伍欄）消耗 1 瓶紅水花 10 秒救活他！`);
+              updateHudUI();
+            }
+          }
+        }
+      }
+
+      mercHudTickAccum += dt;
+      if (mercHudTickAccum >= 1.0) {
+        mercHudTickAccum = 0;
+        if ((player.hiredMercs && player.hiredMercs.length > 0) || hasFeastBuff()) {
+          updateHudUI();
         }
       }
     }
@@ -7740,6 +8929,12 @@
       player.activeHpTier = 1;
       player.activeMpTier = 1;
       player.bag = [];
+      player.stashGold = 0;
+      player.stashBag = [];
+      player.feastBuffUntil = 0;
+      player.mercHireCounts = {};
+      player.hiredMercs = [];
+      player.hasCompletedIntro = false;
       player.clearedFloors = new Set();
       player.deepestFloor = 1;
       player.townPortalFloor = 0;
@@ -7776,6 +8971,12 @@
           activeHpTier: player.activeHpTier,
           activeMpTier: player.activeMpTier,
           bag: JSON.parse(JSON.stringify(player.bag)),
+          stashGold: player.stashGold || 0,
+          stashBag: JSON.parse(JSON.stringify(player.stashBag || [])),
+          feastBuffUntil: player.feastBuffUntil || 0,
+          mercHireCounts: JSON.parse(JSON.stringify(player.mercHireCounts || {})),
+          hiredMercs: JSON.parse(JSON.stringify(player.hiredMercs || [])),
+          hasCompletedIntro: !!player.hasCompletedIntro,
           clearedFloors: Array.from(player.clearedFloors),
           deepestFloor: player.deepestFloor || 1,
           townPortalFloor: player.townPortalFloor || 0,
@@ -7812,6 +9013,12 @@
       player.activeHpTier = data.activeHpTier || 1;
       player.activeMpTier = data.activeMpTier || 1;
       player.bag = Array.isArray(data.bag) ? JSON.parse(JSON.stringify(data.bag)) : [];
+      player.stashGold = data.stashGold || 0;
+      player.stashBag = Array.isArray(data.stashBag) ? JSON.parse(JSON.stringify(data.stashBag)) : [];
+      player.feastBuffUntil = data.feastBuffUntil || 0;
+      player.mercHireCounts = data.mercHireCounts ? JSON.parse(JSON.stringify(data.mercHireCounts)) : {};
+      player.hiredMercs = Array.isArray(data.hiredMercs) ? JSON.parse(JSON.stringify(data.hiredMercs)) : [];
+      player.hasCompletedIntro = !!data.hasCompletedIntro;
       player.clearedFloors = new Set(Array.isArray(data.clearedFloors) ? data.clearedFloors : []);
       player.deepestFloor = data.deepestFloor || 1;
       player.townPortalFloor = data.townPortalFloor || 0;
@@ -7963,6 +9170,27 @@
       document.getElementById('titleScreen').classList.remove('hidden');
     });
 
+    // Item #4 & #6 (1.3): Story Prologue Sequence — Traveler walks across the bridge into town -> Mayor Aldrin warmly greets & tells town story -> Escorts player to Inn 2F Private Room!
+    let introCutsceneStage = 0; // 0 = inactive, 1 = walking into town, 2 = Mayor leading to Inn
+
+    function startTravelerArrivalPrologue() {
+      if (currentFloor !== 0) loadMountainVillage(false);
+      introCutsceneStage = 1;
+      // Place traveler on the West Bridgehead walking East into the village
+      player.x = -7.5;
+      player.z = 2.0;
+      player.y = getVillageWalkableHeight(player.x, player.z);
+      player.rotY = Math.PI / 2;
+      if (playerMesh) playerMesh.position.set(player.x, player.y, player.z);
+      moveTarget = { x: 11.2, z: 1.2 };
+      showToast('🎬 【故事序章】風塵僕僕的旅行者步行跨越木拱橋，踏入了阿爾卑斯山中小村莊...');
+    }
+
+    document.getElementById('replayIntroBtn').addEventListener('click', () => {
+      document.getElementById('hudMenuDrawer').classList.add('hidden');
+      startTravelerArrivalPrologue();
+    });
+
     document.getElementById('startJourneyBtn').addEventListener('click', () => {
       const enteredName = document.getElementById('createHeroNameInput').value.trim();
       if (enteredName) {
@@ -7970,12 +9198,19 @@
         const mpInput = document.getElementById('mpNameInput');
         if (mpInput) mpInput.value = myPlayerName;
       }
+      const isFirstEntry = !player.hasCompletedIntro;
+      player.hasCompletedIntro = true;
       saveHeroProfileToStorage();
       buildHeroMesh();
+      rebuildActiveMercenaryMeshes();
       broadcastMyState(true);
       renderMpPlayerList();
       const av = getAvatarPreset(player.avatarId);
-      showToast(`⚔️ 歡迎「${myPlayerName}」（${av.name}）！已自動儲存你的角色設定`);
+      if (isFirstEntry) {
+        startTravelerArrivalPrologue();
+      } else {
+        showToast(`⚔️ 歡迎回來，「${myPlayerName}」（${av.name}）！已自動讀取你的角色與保管箱記錄`);
+      }
     });
 
     // Spawn 12 Goal-Directed Moving NPCs in the Mountain Village (including 4 Adventurers entering/exiting the Mine Cave!)
@@ -8175,6 +9410,12 @@
     // 15. COLLISION, ENHANCED MINIMAP & MAIN LOOP
     // =========================================================================
     function isWalkable(wx, wz) {
+      if (currentFloor === -99) {
+        return Math.abs(wx) < 7.95 && Math.abs(wz) < 6.45;
+      }
+      if (currentFloor === -98) {
+        return Math.abs(wx) < 7.15 && Math.abs(wz) < 5.55;
+      }
       if (currentFloor < 0) {
         return Math.abs(wx) < 4.95 && Math.abs(wz) < 4.95;
       }
@@ -8522,6 +9763,52 @@
           vz = dz / d;
         } else {
           moveTarget = null;
+          if (introCutsceneStage === 1) {
+            introCutsceneStage = 0;
+            // Mayor Aldrin warmly greets the stranger and explains the village's story (Item #4, #5, #6)
+            openDialogue(
+              '鎮長 歐德林',
+              '阿爾卑斯山谷村莊長老',
+              '👑',
+              [
+                `「喔喔！遠道而來的旅行者『${myPlayerName}』，歡迎你步行來到我們的阿爾卑斯山中小村莊！看你風塵僕僕的模樣，這一路走來一定辛苦了吧。」`,
+                '「讓我為你解說這座小鎮的故事吧。我們原本是仰賴北方山壁礦脈維生的寧靜山谷，直到數月前，礦坑深處突然裂開了通往『深淵百層（B1～B100）』的裂隙，無數魔物與每 10 層的深淵領主接連湧出……」',
+                '「為了抵抗深淵，鎮上的鐵匠戈倫（⚔️）、甲匠蜜拉（🛡️）與草藥師漢娜（🧪）日夜趕工；而四方湧來的各職業傭兵們，全都聚集在廣場北側的【晨曦大旅店】一樓酒館等待強者招募。」',
+                '「另外，我們在城鎮西南郊區的空地修復了一座『🔮 遠古符文魔法陣』。今後你在地城深處開啟回城傳送門時，都會從那座郊區魔法陣歸來，就算休息關機重開，傳送門也依然會為你保留！」',
+                '「來吧！我已經在【晨曦大旅店二樓】為你準備了一間專屬客房，裡頭有舒適的大床與能安全鎖住金幣與裝備的『專屬保管箱』。現在就隨我一起去旅店二樓好好休息吧！」'
+              ],
+              [],
+              () => {
+                // Mayor escorts player to the Inn and up to 2F Private Room (Item #6)
+                introCutsceneStage = 2;
+                const mayorNpc = npcs.find((n) => n.id === 'mayor');
+                if (mayorNpc && mayorNpc.mesh) {
+                  mayorNpc.mesh.position.set(11.5, getVillageWalkableHeight(11.5, -2.2), -2.2);
+                }
+                moveTarget = { x: 11.5, z: -2.4 };
+                showToast('👑 鎮長歐德林正親自帶領你前往「晨曦大旅店」二樓專屬客房...');
+              }
+            );
+          } else if (introCutsceneStage === 2) {
+            introCutsceneStage = 0;
+            lastVillageReturnPos = { x: 11.5, z: -1.55, rotY: 0 };
+            loadInnSecondFloor();
+            // Position player right inside their 2F Private Suite in front of the Bed & Stash Box!
+            player.x = -2.2;
+            player.z = 0.2;
+            player.rotY = -Math.PI / 2;
+            if (playerMesh) playerMesh.position.set(player.x, 0, player.z);
+            openDialogue(
+              '鎮長 歐德林',
+              '旅店二樓 · 主角專屬客房導覽',
+              '🔑',
+              [
+                `「『${myPlayerName}』，這裡就是旅店二樓專屬於你的房間了！左前方是你的【🛏️ 專屬大床】，隨時走到床邊按 F 鍵就能直接免費休息、回滿 HP 與 MP。」`,
+                '「左後方則是你的【🧰 專屬保管箱】，按 F 鍵就能打開存放多餘的裝備與金幣。記住，萬一在深淵地城倒下並選擇直接回城復活，身上的金幣會全部遺失，但鎖在這個保管箱裡的金幣跟裝備永遠不會掉！」',
+                '「休息夠了之後，走下右側樓梯到【一樓酒館大廳】，可以找老闆娘艾琳吃頓加能力的飯店大餐，或招募最多 3 位傭兵夥伴陪你下礦坑。願晨曦照耀你的旅途！」'
+              ]
+            );
+          }
         }
       }
 
@@ -8720,7 +10007,7 @@
           updateHudUI();
           vfxGroup.remove(ep.mesh);
           enemyProjectiles.splice(i, 1);
-          if (player.hp <= 0) document.getElementById('deathScreen').classList.remove('hidden');
+          if (player.hp <= 0) triggerHeroDownedState();
         }
       }
 
@@ -8864,7 +10151,7 @@
           setTimeout(() => { hurtEl.style.opacity = '0'; }, 180);
 
           if (player.hp <= 0) {
-            document.getElementById('deathScreen').classList.remove('hidden');
+            triggerHeroDownedState();
           }
         }
       }
