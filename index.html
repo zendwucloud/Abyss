@@ -140,6 +140,61 @@
       100% { opacity: 0; transform: translate(-50%, -46px) scale(0.92); }
     }
   </style>
+
+  <style>
+    /* Monster Hunter World / Enshrouded Style Clean Title Screen */
+    #mhwTitleOverlay {
+      position: fixed; inset: 0; z-index: 55;
+      display: flex; flex-direction: column; justify-content: space-between;
+      pointer-events: auto;
+      background: linear-gradient(90deg, rgba(8, 6, 5, 0.90) 0%, rgba(8, 6, 5, 0.54) 44%, rgba(8, 6, 5, 0.14) 100%);
+      transition: opacity 0.3s ease;
+    }
+    #mhwTitleOverlay.mhw-hidden {
+      display: none !important;
+      pointer-events: none !important;
+    }
+    .mhw-menu-btn {
+      position: relative;
+      display: block;
+      width: 100%;
+      text-align: left;
+      padding: 0.8rem 1.5rem 0.8rem 1.75rem;
+      font-family: 'Noto Serif TC', 'Cinzel', serif;
+      font-size: 1.15rem;
+      font-weight: 700;
+      letter-spacing: 0.12em;
+      color: #e2d7c1;
+      background: linear-gradient(90deg, rgba(28, 21, 16, 0.82) 0%, rgba(28, 21, 16, 0.0) 100%);
+      border: none;
+      border-left: 3px solid rgba(212, 175, 55, 0.4);
+      transition: all 0.18s cubic-bezier(0.16, 1, 0.3, 1);
+      cursor: pointer;
+    }
+    .mhw-menu-btn:hover {
+      color: #fef08a;
+      border-left: 5px solid #fbbf24;
+      padding-left: 2.25rem;
+      background: linear-gradient(90deg, rgba(120, 83, 40, 0.65) 0%, rgba(28, 21, 16, 0.0) 100%);
+      text-shadow: 0 0 12px rgba(251, 191, 36, 0.65);
+    }
+    .mhw-sub-label {
+      display: block;
+      font-size: 0.7rem;
+      font-weight: 500;
+      letter-spacing: 0.16em;
+      color: #a8a29e;
+      text-transform: uppercase;
+      margin-top: 0.15rem;
+    }
+    /* Raise Secondary Modals above #mhwTitleOverlay (z-index: 55) so they work both on Title Screen and In-Game! */
+    #titleScreen { z-index: 65 !important; }
+    #silverpeakGuideModal { z-index: 70 !important; }
+    #mhwOptionsModal { z-index: 70 !important; }
+    #codexPanel { z-index: 75 !important; }
+    #dialoguePanel { z-index: 80 !important; }
+  </style>
+
 </head>
 <body>
   <!-- 3D WebGL Canvas & Background Music Audio Elements -->
@@ -10229,6 +10284,974 @@
       initFirebaseMultiplayer();
       requestAnimationFrame(animate);
     };
+  
+    // =========================================================================
+    // 16. 《銀嶺秘境：銀嶺的餘燼與破曉》完整劇情、職業定位與極簡主畫面擴充模組
+    // =========================================================================
+    (function integrateSilverpeakSanctuaryAndMhwMenu() {
+      // 1. 更新網頁標題與主視覺名稱為《銀嶺秘境》
+      document.title = '銀嶺秘境：銀嶺的餘燼與破曉 — SILVERPEAK SANCTUARY';
+      const titleH1 = document.querySelector('#titleScreen h1');
+      if (titleH1) titleH1.textContent = '銀嶺秘境：角色進度槽與創角設定';
+      const titleSub = document.querySelector('#titleScreen p.font-cinzel');
+      if (titleSub) titleSub.textContent = 'Silverpeak Sanctuary · Character Save Slots';
+      const locLbl = document.getElementById('locationLabel');
+      if (locLbl && locLbl.textContent.includes('村莊')) locLbl.textContent = '銀嶺秘境 · 晨曦鎮';
+
+      // 2. 調整八大角色職業為四大定位（全能型、近戰強化、遠程強化、坦＋補）
+      const NEW_CLASS_ROLES = {
+        wanderer_m: {
+          title: '蒼藍劍士·雷恩 (全能型)',
+          roleTag: '全能型（可拿盾與招架）',
+          canShieldParry: true, parryRate: 0.30,
+          hpMult: 1.10, atkMult: 1.05, defMult: 1.15,
+          basicType: 'melee', basicMult: 1.0, basicName: '揮劍/招架', basicIcon: '🛡️',
+          skillType: 'orange_fireball', skillMult: 1.20, skillMp: 10, skillName: '蒼藍烈焰斬', skillIcon: '🔥',
+          desc: '【全能型】攻守平衡，可持盾並具備 30% 招架減傷反擊率 · 特殊技：蒼藍烈焰斬'
+        },
+        ronin_f: {
+          title: '櫻華劍姬·凜 (全能型)',
+          roleTag: '全能型（可拿盾與招架）',
+          canShieldParry: true, parryRate: 0.30,
+          hpMult: 1.10, atkMult: 1.05, defMult: 1.15,
+          basicType: 'melee', basicMult: 1.0, basicName: '居合/招架', basicIcon: '🌸',
+          skillType: 'orange_fireball', skillMult: 1.20, skillMp: 10, skillName: '櫻華紅蓮斬', skillIcon: '🔥',
+          desc: '【全能型】攻守平衡，可持盾並具備 30% 劍技招架率 · 特殊技：櫻華紅蓮斬'
+        },
+        berserker_m: {
+          title: '北境狂戰士·布洛克 (近戰強化型)',
+          roleTag: '近戰強化型（不可拿盾或招架）',
+          canShieldParry: false, parryRate: 0,
+          hpMult: 1.45, atkMult: 1.45, defMult: 0.85,
+          basicType: 'melee', basicMult: 1.25, basicName: '狂暴重劈', basicIcon: '🪓',
+          skillType: 'whirlwind', skillMult: 1.65, skillMp: 12, skillName: '360度迴旋斬', skillIcon: '🌪️',
+          desc: '【近戰強化型】捨棄盾牌與招架，換取極致近戰爆發(+45%傷害) · 特殊技：360度迴旋斬'
+        },
+        assassin_m: {
+          title: '暗影刺客·洛奇 (近戰強化型)',
+          roleTag: '近戰強化型（不可拿盾或招架）',
+          canShieldParry: false, parryRate: 0,
+          hpMult: 1.05, atkMult: 1.55, defMult: 0.80,
+          basicType: 'melee', basicMult: 1.30, basicName: '雙刃背刺', basicIcon: '🥷',
+          skillType: 'whirlwind', skillMult: 1.75, skillMp: 10, skillName: '暗影瞬獄殺', skillIcon: '⚡',
+          desc: '【近戰強化型】不可持盾或招架，極致近身暴擊與高攻速 · 特殊技：暗影瞬獄殺'
+        },
+        mage_f: {
+          title: '星穹祕法師·薇薇安 (遠程強化型)',
+          roleTag: '遠程強化型（高魔傷/血防較弱）',
+          canShieldParry: false, parryRate: 0,
+          hpMult: 0.72, atkMult: 1.35, defMult: 0.70,
+          basicType: 'arcane_bolt', basicMult: 0.65, basicName: '星穹秘法彈', basicIcon: '🔮',
+          skillType: 'lightning_orb', skillMult: 1.85, skillMp: 8, skillName: '星穹閃電球', skillIcon: '⚡',
+          desc: '【遠程強化型】不可拿盾或招架、血防較弱，但具備最高廣域遠程魔法爆發'
+        },
+        ranger_f: {
+          title: '精靈遊俠·艾琳 (遠程強化型)',
+          roleTag: '遠程強化型（高狙擊/血防較弱）',
+          canShieldParry: false, parryRate: 0,
+          hpMult: 0.78, atkMult: 1.30, defMult: 0.75,
+          basicType: 'arrow', basicMult: 0.75, basicName: '精靈長弓狙擊', basicIcon: '🏹',
+          skillType: 'multishot', skillMult: 1.55, skillMp: 10, skillName: '疾風三重箭', skillIcon: '🏹',
+          desc: '【遠程強化型】不可拿盾或招架、血防較弱，擅長遠距風箏與三重箭連射'
+        },
+        paladin_m: {
+          title: '聖輝騎士·亞瑟 (坦＋補)',
+          roleTag: '坦＋補（高血防/近戰低傷害）',
+          canShieldParry: true, parryRate: 0.40,
+          hpMult: 1.55, atkMult: 0.70, defMult: 1.50,
+          basicType: 'melee', basicMult: 0.85, basicName: '重盾聖鎚擊', basicIcon: '⚜️',
+          skillType: 'holy_heal', skillMult: 0.55, skillMp: 14, skillName: '聖光群體治療', skillIcon: '✨',
+          desc: '【坦＋補】最高血量與重盾防禦、近戰低傷害 · 特殊技：聖光恢復 55% 最大生命'
+        },
+        valkyrie_f: {
+          title: '緋紅女武神·希雅 (坦＋補)',
+          roleTag: '坦＋補（高血防/近戰低傷害）',
+          canShieldParry: true, parryRate: 0.40,
+          hpMult: 1.50, atkMult: 0.72, defMult: 1.45,
+          basicType: 'melee', basicMult: 0.85, basicName: '女武神護盾斬', basicIcon: '🪽',
+          skillType: 'holy_heal', skillMult: 0.55, skillMp: 14, skillName: '神聖恩典治療', skillIcon: '✨',
+          desc: '【坦＋補】堅不可摧的女武神重裝與續航核心、近戰低傷害 · 特殊技：恢復 55% 生命'
+        }
+      };
+
+      Object.keys(NEW_CLASS_ROLES).forEach((k) => {
+        if (CLASS_SPECS[k]) Object.assign(CLASS_SPECS[k], NEW_CLASS_ROLES[k]);
+      });
+
+      AVATAR_PRESETS.forEach((av) => {
+        if (NEW_CLASS_ROLES[av.id]) {
+          av.badge = NEW_CLASS_ROLES[av.id].roleTag;
+          av.desc = NEW_CLASS_ROLES[av.id].desc;
+        }
+      });
+
+      // 實作持盾招架減傷：全能型(30%)與坦補(40%)在敵人攻擊時有機率觸發招架減傷
+      const origEffDef = effDef;
+      effDef = function() {
+        const base = origEffDef();
+        const spec = getClassSpec();
+        if (spec.canShieldParry && currentFloor >= 1 && enemies.length > 0 && Math.random() < (spec.parryRate || 0.30)) {
+          spawnFloatingText(player.x, player.y + 2.1, player.z, '🛡️ 舉盾招架！(傷害減免)', '#38bdf8', false);
+          return base + Math.round(player.maxHp * 0.18);
+        }
+        return base;
+      };
+
+      // 3. 擴充地城 B1~B100 十種場景名稱與反派頭目名稱
+      getBiomeTitle = function(fl) {
+        if (fl <= 10) return '廢棄礦坑（藍霧與灼傷殘骸）';
+        if (fl <= 20) return '水晶洞窟（發光藍晶簇）';
+        if (fl <= 30) return '淹沒的古礦工城（千年前遺跡）';
+        if (fl <= 40) return '古代防禦工事·外壘（第1魔力節點）';
+        if (fl <= 50) return '符文聖殿（第2魔力節點）';
+        if (fl <= 60) return '英雄墓窟（第3魔力節點）';
+        if (fl <= 70) return '熔岩裂谷（第4魔力節點）';
+        if (fl <= 80) return '炎龍封印核心（千年枷鎖崩壞）';
+        if (fl <= 90) return '崩壞煉獄（古史博學者與滅世炎龍）';
+        return '終焉深淵（真結局限定·終焉魔王王座）';
+      };
+
+      getFloorName = function(fl) {
+        if (fl === 0) return '銀嶺秘境 · 晨曦鎮';
+        if (fl === -99) return '🏨 晨曦大旅店 · 1F 冒險者酒館大廳';
+        if (fl === -98) return '🛏️ 晨曦大旅店 · 2F 客房與專屬房間';
+        if (fl < 0) return `晨曦鎮民宅 · 第 ${Math.abs(fl)} 號屋`;
+        const biome = getBiomeTitle(fl);
+        if (fl === 80) return `🌋 劇情轉折：B80 ${biome}`;
+        if (fl === 90) return `🐉 煉獄決戰：B90 ${biome}`;
+        if (fl === 100) return `👹 終焉決戰：B100 ${biome}`;
+        return `B${fl} · ${biome}`;
+      };
+
+      ENEMY_TYPES.fire_dragon.name = '🐉 滅世炎龍 卡爾德隆';
+      ENEMY_TYPES.hell_overlord.name = '👹 終焉魔王 伊格納洛斯';
+      ENEMY_TYPES.boss.name = '🗿 古代魔力節點守護者';
+
+      // 4. 建立《銀嶺秘境》主線、7 塊封印石板與 3 大隱藏懸疑劇情狀態（支援 LocalStorage 保存）
+      const STORY_STORAGE_PREFIX = 'silverpeak_story_slot_';
+      function ensureStoryState() {
+        if (!player.silverpeakStory) {
+          let loaded = null;
+          try {
+            const raw = localStorage.getItem(STORY_STORAGE_PREFIX + currentSaveSlotIdx);
+            if (raw) loaded = JSON.parse(raw);
+          } catch (e) {}
+          player.silverpeakStory = loaded || {
+            cycle: 1,
+            mainStage: 0,
+            tablets: {
+              t1_b40: false,
+              t2_b50: false,
+              t3_b60: false,
+              t4_b70: false,
+              t5_blackmarket: false,
+              t6_stonecircle: false,
+              t7_herotomb: false
+            },
+            flags: {
+              burnTruth: false,
+              b10RelicLooted: false,
+              translationError: false,
+              midnightStalk: false
+            },
+            seenNormalEnding: false,
+            seenTrueEnding: false
+          };
+        }
+        return player.silverpeakStory;
+      }
+
+      function saveStoryState() {
+        try {
+          if (player.silverpeakStory) {
+            localStorage.setItem(STORY_STORAGE_PREFIX + currentSaveSlotIdx, JSON.stringify(player.silverpeakStory));
+          }
+        } catch (e) {}
+      }
+
+      function countTablets() {
+        const st = ensureStoryState();
+        return Object.values(st.tablets).filter(Boolean).length;
+      }
+
+      function countHiddenFlags() {
+        const st = ensureStoryState();
+        return [st.flags.burnTruth, st.flags.translationError, st.flags.midnightStalk].filter(Boolean).length;
+      }
+
+      function isTrueEndingUnlocked() {
+        return countTablets() >= 7 && countHiddenFlags() >= 3;
+      }
+
+      // 5. 在左上角 HUD 注入「📜 銀嶺秘境：主支線與封印石板進度面板」與「任務指引視窗」
+      const hudWrapper = document.getElementById('mercenaryAndBuffHud');
+      if (hudWrapper && !document.getElementById('silverpeakQuestTracker')) {
+        const tracker = document.createElement('div');
+        tracker.id = 'silverpeakQuestTracker';
+        tracker.className = 'gothic-panel px-3 py-2 rounded-xl text-[11px] space-y-1 border border-amber-500/60 pointer-events-auto cursor-pointer hover:border-amber-300 transition';
+        tracker.title = '點擊查看《銀嶺秘境》主線、7塊封印石板與3大隱藏劇情詳細指南';
+        tracker.addEventListener('click', () => window.openSilverpeakQuestGuideModal());
+        hudWrapper.prepend(tracker);
+      }
+
+      function refreshSilverpeakTrackerUI() {
+        const el = document.getElementById('silverpeakQuestTracker');
+        if (!el) return;
+        const st = ensureStoryState();
+        const tabCnt = countTablets();
+        const flagCnt = countHiddenFlags();
+        const trueReady = isTrueEndingUnlocked();
+
+        let nextGoal = '📍 主線：在晨曦鎮廣場找「古史博學者 艾德里安」聽取石板解讀';
+        if (st.mainStage === 1) nextGoal = '📍 主線：探索礦坑 B10 調查祭儀殘骸、B30 尋找千年前礦工日誌';
+        else if (st.mainStage === 2) nextGoal = '📍 主線：突破 B40/B50/B60/B70 魔力節點，收集封印石板';
+        else if (st.mainStage === 3) nextGoal = '📍 終戰：前往 B90 迎戰叛變的博學者與【滅世炎龍 卡爾德隆】！';
+        else if (st.mainStage >= 4) nextGoal = '📍 終焉深淵：挺進 B91～B100 討伐【終焉魔王 伊格納洛斯】！';
+
+        el.innerHTML = `
+          <div class="flex items-center justify-between gap-2">
+            <span class="font-bold text-amber-300">🏔️ 銀嶺秘境 (${st.cycle}周目)</span>
+            <span class="px-1.5 py-0.5 rounded bg-stone-900 border ${trueReady ? 'border-emerald-400 text-emerald-300' : 'border-amber-500/50 text-amber-200'} font-mono">
+              📜石板 ${tabCnt}/7 · 🔍真相 ${flagCnt}/3
+            </span>
+          </div>
+          <div class="text-stone-200 truncate">${nextGoal}</div>
+          <div class="text-[10px] text-sky-300">👆 點擊展開【新手指南 / 支線石板 / 隱藏劇情清單】</div>
+        `;
+      }
+
+      const guideModalHtml = `
+        <div id="silverpeakGuideModal" class="hidden fixed inset-0 z-[70] flex items-center justify-center p-3 sm:p-4 bg-black/80">
+          <div class="gothic-panel w-full max-w-3xl rounded-2xl p-4 sm:p-6 border-2 border-amber-500/80 space-y-4 max-h-[90vh] overflow-y-auto">
+            <div class="flex items-center justify-between border-b border-stone-700 pb-3">
+              <div>
+                <h3 class="text-lg sm:text-xl font-black text-amber-200">📖 《銀嶺秘境》主支線任務與真結局拼圖日誌</h3>
+                <p class="text-xs text-stone-400">收集 7 塊古代封印石板並揭開 3 大隱藏真相，即可在 B90 斬殺炎龍後開啟 B91～B100 終焉深淵（真結局）</p>
+              </div>
+              <button id="closeSpGuideBtn" type="button" class="gothic-btn px-3 py-1 rounded-lg text-xs">✕ 關閉</button>
+            </div>
+            <div id="spGuideBody" class="space-y-3 text-xs"></div>
+          </div>
+        </div>
+      `;
+      document.body.insertAdjacentHTML('beforeend', guideModalHtml);
+      document.getElementById('closeSpGuideBtn').addEventListener('click', () => {
+        document.getElementById('silverpeakGuideModal').classList.add('hidden');
+      });
+
+      window.openSilverpeakQuestGuideModal = function() {
+        const st = ensureStoryState();
+        const t = st.tablets;
+        const f = st.flags;
+        const body = document.getElementById('spGuideBody');
+        const badge = (done) => done
+          ? '<span class="px-2 py-0.5 rounded bg-emerald-950 text-emerald-300 border border-emerald-500/50 font-bold">✓ 已達成</span>'
+          : '<span class="px-2 py-0.5 rounded bg-stone-900 text-stone-400 border border-stone-700">未完成</span>';
+
+        body.innerHTML = `
+          <div class="p-3 rounded-xl bg-stone-950/90 border border-amber-500/40 space-y-1.5">
+            <div class="font-bold text-amber-300 text-sm">🧭 新手入村與主線進度【深淵的呼喚】</div>
+            <p class="text-stone-300 leading-relaxed">
+              千年前銀嶺礦工挖穿熔岩層喚醒【滅世炎龍 卡爾德隆】，全大陸英雄建立地下百層防禦工事將其封印。如今晨曦鎮尋寶熱潮再起，古史博學者艾德里安委託你深入 B40～B70「重置魔力節點」……但村民身上的異常灼傷與殘破石板，卻指向另一個可怕的陰謀。
+            </p>
+          </div>
+
+          <div class="p-3 rounded-xl bg-stone-950/90 border border-stone-700 space-y-2">
+            <div class="font-bold text-amber-200 text-sm">📜 關鍵任務物品：7 塊古代封印石板 (${countTablets()} / 7)</div>
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-2">
+              <div class="p-2 rounded bg-stone-900 flex items-center justify-between"><span>1. B40 外壘魔力節點守護者掉落</span>${badge(t.t1_b40)}</div>
+              <div class="p-2 rounded bg-stone-900 flex items-center justify-between"><span>2. B50 符文聖殿節點守護者掉落</span>${badge(t.t2_b50)}</div>
+              <div class="p-2 rounded bg-stone-900 flex items-center justify-between"><span>3. B60 英雄墓窟節點守護者掉落</span>${badge(t.t3_b60)}</div>
+              <div class="p-2 rounded bg-stone-900 flex items-center justify-between"><span>4. B70 熔岩裂谷節點守護者掉落</span>${badge(t.t4_b70)}</div>
+              <div class="p-2 rounded bg-stone-900 flex items-center justify-between">
+                <span>5. 【支線一】黑市商人維克斯的「原版石板」</span>
+                <button type="button" onclick="window.buyOrClaimTablet5()" class="gothic-btn px-2 py-0.5 rounded text-[11px] text-amber-200">${t.t5_blackmarket ? '✓ 已取得' : '🪙 500金購買'}</button>
+              </div>
+              <div class="p-2 rounded bg-stone-900 flex items-center justify-between">
+                <span>6. 【支線二】帶「精靈遊俠·艾琳」調查郊區傳送石陣</span>
+                <button type="button" onclick="window.triggerTablet6Quest()" class="gothic-btn px-2 py-0.5 rounded text-[11px] text-emerald-200">${t.t6_stonecircle ? '✓ 已取得' : '🔍 立即探索'}</button>
+              </div>
+              <div class="p-2 rounded bg-stone-900 sm:col-span-2 flex items-center justify-between">
+                <span>7. 【支線三】帶「櫻華劍姬·凜」於 B51～B60 英雄墓窟解開先祖墓室</span>
+                <button type="button" onclick="window.triggerTablet7Quest()" class="gothic-btn px-2 py-0.5 rounded text-[11px] text-pink-200">${t.t7_herotomb ? '✓ 已取得' : '🌸 喚醒劍魂'}</button>
+              </div>
+            </div>
+          </div>
+
+          <div class="p-3 rounded-xl bg-stone-950/90 border border-stone-700 space-y-2">
+            <div class="font-bold text-sky-300 text-sm">🔍 揭穿陰謀：3 大隱藏懸疑劇情 (${countHiddenFlags()} / 3)</div>
+            <div class="space-y-1.5">
+              <div class="p-2 rounded bg-stone-900 flex items-center justify-between gap-2">
+                <div>
+                  <div class="font-bold text-amber-100">【隱藏一】異樣的灼傷（老礦工巴爾 ＆ 草藥師漢娜）</div>
+                  <div class="text-stone-400 text-[11px]">探索 B10 取得祭儀殘骸，或與老礦工巴爾、草藥師漢娜比對傷口，確認傷勢來自地獄儀式之火。</div>
+                </div>
+                <button type="button" onclick="window.triggerHidden1BurnTruth()" class="gothic-btn px-2.5 py-1 rounded shrink-0">${f.burnTruth ? '✓ 已揭開' : '🧪 調查傷口'}</button>
+              </div>
+              <div class="p-2 rounded bg-stone-900 flex items-center justify-between gap-2">
+                <div>
+                  <div class="font-bold text-amber-100">【隱藏二】學者的謊言（星穹術士·薇薇安比對原版石板）</div>
+                  <div class="text-stone-400 text-[11px]">取得第 5 塊「原版石板」後交給薇薇安，識破博學者將「解除封印」謊稱為「鞏固封印」。</div>
+                </div>
+                <button type="button" onclick="window.triggerHidden2Translation()" class="gothic-btn px-2.5 py-1 rounded shrink-0">${f.translationError ? '✓ 已識破' : '🔮 請薇薇安破譯'}</button>
+              </div>
+              <div class="p-2 rounded bg-stone-900 flex items-center justify-between gap-2">
+                <div>
+                  <div class="font-bold text-amber-100">【隱藏三】深夜的密會（夜晚帶暗影刺客·洛奇跟蹤博學者）</div>
+                  <div class="text-stone-400 text-[11px]">隊伍中有洛奇（或玩家為暗影刺客）時，尾隨博學者至礦坑口，目睹他向終焉魔王獻祭。</div>
+                </div>
+                <button type="button" onclick="window.triggerHidden3MidnightStalk()" class="gothic-btn px-2.5 py-1 rounded shrink-0">${f.midnightStalk ? '✓ 已目擊' : '🥷 執行深夜跟蹤'}</button>
+              </div>
+            </div>
+          </div>
+
+          <div class="flex flex-wrap items-center justify-between gap-2 pt-2 border-t border-stone-800">
+            <div class="text-[11px] text-stone-300">
+              目前結局路線判定：${isTrueEndingUnlocked()
+                ? '<strong class="text-emerald-300">🌅 真結局【破曉的晨曦】（已解鎖新封印能力與 B91-B100 終焉深淵！）</strong>'
+                : '<strong class="text-amber-300">❄️ 普通結局【風雪中的鎮魂歌】（條件未齊，B90 擊退炎龍後夥伴將壯烈斷後）</strong>'}
+            </div>
+            <div class="flex gap-2">
+              <button type="button" onclick="window.previewEndingCutscene(false)" class="gothic-btn px-3 py-1.5 rounded-lg text-xs text-red-200">🎬 預覽普通結局</button>
+              <button type="button" onclick="window.previewEndingCutscene(true)" class="gothic-btn px-3 py-1.5 rounded-lg text-xs text-emerald-200">🌅 預覽真結局</button>
+              <button type="button" onclick="window.startNewGamePlusCycle()" class="gothic-btn px-3 py-1.5 rounded-lg text-xs text-amber-300">🔄 踏上新周目輪迴</button>
+            </div>
+          </div>
+        `;
+        document.getElementById('silverpeakGuideModal').classList.remove('hidden');
+      };
+
+      window.buyOrClaimTablet5 = function() {
+        const st = ensureStoryState();
+        if (st.tablets.t5_blackmarket) {
+          showToast('📜 你已經擁有第 5 塊「黑市原版石板」了！');
+          return;
+        }
+        if (player.gold < 500) {
+          showToast('🪙 金幣不足 500！可先去地城打怪賺取金幣，再向黑市商人維克斯買下原版石板');
+          return;
+        }
+        player.gold -= 500;
+        st.tablets.t5_blackmarket = true;
+        saveStoryState();
+        playSound('win');
+        saveHeroProfileToStorage();
+        updateHudUI();
+        window.openSilverpeakQuestGuideModal();
+        openDialogue('黑市商人 維克斯', '【支線一】黑市的贓物', '🕵️', [
+          '「嘿嘿，算你識貨！這塊從 B30 古礦工城偷運出來的『原版古代石板』，上面的古文字可還沒被那位博學者塗改過呢……」',
+          '🎉 獲得關鍵物品：【古代封印石板 #5（原版石板）】！快拿去給星穹術士·薇薇安比對看看吧！'
+        ]);
+      };
+
+      window.triggerTablet6Quest = function() {
+        const st = ensureStoryState();
+        if (st.tablets.t6_stonecircle) {
+          showToast('📜 你已經取得第 6 塊石板！');
+          return;
+        }
+        const hasEileen = player.avatarId === 'ranger_f' || (player.hiredMercs && player.hiredMercs.some(m => m.presetId === 'ranger_f'));
+        if (!hasEileen) {
+          showToast('🏹 需自身為「精靈遊俠」或在 1F 酒館招募【精靈遊俠·艾琳】入隊，才能感應傳送石陣下的密室！');
+          return;
+        }
+        st.tablets.t6_stonecircle = true;
+        saveStoryState();
+        playSound('win');
+        saveHeroProfileToStorage();
+        updateHudUI();
+        window.openSilverpeakQuestGuideModal();
+        openDialogue('精靈遊俠·艾琳', '【支線二】古老石陣的低語', '🏹', [
+          '「等等！這座傳送石陣底下的魔力迴路不是用來運金礦的……千年前全大陸的英雄就是透過這座石陣，將鎮壓滅世炎龍的封印物資送進銀嶺山谷！」',
+          '🎉 艾琳解開了石陣底層的精靈符文密室，獲得【古代封印石板 #6】！'
+        ]);
+      };
+
+      window.triggerTablet7Quest = function() {
+        const st = ensureStoryState();
+        if (st.tablets.t7_herotomb) {
+          showToast('📜 你已經取得第 7 塊石板！');
+          return;
+        }
+        const hasRin = player.avatarId === 'ronin_f' || (player.hiredMercs && player.hiredMercs.some(m => m.presetId === 'ronin_f'));
+        if (!hasRin && (player.deepestFloor || 1) < 51) {
+          showToast('🌸 需招募【櫻華劍姬·凜】（或自身為劍姬）並推進至英雄墓窟，才能喚醒先祖墓室！');
+          return;
+        }
+        st.tablets.t7_herotomb = true;
+        saveStoryState();
+        addGearToBag(WEAPONS_DB[35] || WEAPONS_DB[25]);
+        playSound('win');
+        saveHeroProfileToStorage();
+        updateHudUI();
+        window.openSilverpeakQuestGuideModal();
+        openDialogue('櫻華劍姬·凜', '【支線三】櫻華的宿命', '🌸', [
+          '「千年前我的先祖遠渡重洋來到銀嶺，用生命鑄就了囚禁炎龍卡爾德隆的第七道枷鎖。先祖啊，請將斬斷深淵的力量託付給我們！」',
+          '🎉 擊敗亡靈劍聖幻影，獲得【古代封印石板 #7】與傳說名刀！'
+        ]);
+      };
+
+      window.triggerHidden1BurnTruth = function() {
+        const st = ensureStoryState();
+        st.flags.burnTruth = true;
+        saveStoryState();
+        playSound('levelup');
+        saveHeroProfileToStorage();
+        updateHudUI();
+        window.openSilverpeakQuestGuideModal();
+        openDialogue('草藥師 漢娜 ＆ 老礦工 巴爾', '【隱藏劇情一】灼傷的真相', '🧪', [
+          '老礦工巴爾：「那天在 B10 礦坑深處，我看到一個穿著學者長袍的人影在吟唱黑火咒文，我的同伴就是被那股紫黑色的火焰燒傷的！」',
+          '草藥師漢娜：「沒錯！這根本不是地底岩漿的燙傷，而是古代終焉教派的『地獄獻祭之火』！鎮上那位博學者一定隱瞞了什麼！」',
+          '🔍 已揭開隱藏真相【灼傷的真相】！'
+        ]);
+      };
+
+      window.triggerHidden2Translation = function() {
+        const st = ensureStoryState();
+        if (!st.tablets.t5_blackmarket) {
+          showToast('⚠️ 請先在上方【支線一】向黑市商人維克斯取得「第 5 塊原版石板」，才能交給薇薇安比對！');
+          return;
+        }
+        st.flags.translationError = true;
+        saveStoryState();
+        playSound('levelup');
+        saveHeroProfileToStorage();
+        updateHudUI();
+        window.openSilverpeakQuestGuideModal();
+        openDialogue('星穹術士·薇薇安', '【隱藏劇情二】學者的謊言', '🔮', [
+          '「天啊……這塊黑市買來的原版石板寫得清清楚楚！艾德里安博學者教我們的古代語文法完全是顛倒的！」',
+          '「我們在 B40 到 B70 魔力節點做的操作，根本不是『鞏固防禦工事』，而是替他一步步『解除千年前英雄設下的封印』！他想放出滅世炎龍與終焉魔王！」',
+          '🔍 已識破隱藏真相【翻譯錯誤】！'
+        ]);
+      };
+
+      window.triggerHidden3MidnightStalk = function() {
+        const st = ensureStoryState();
+        st.flags.midnightStalk = true;
+        saveStoryState();
+        playSound('levelup');
+        saveHeroProfileToStorage();
+        updateHudUI();
+        window.openSilverpeakQuestGuideModal();
+        openDialogue('暗影刺客·洛奇', '【隱藏劇情三】深夜的跟蹤', '🥷', [
+          '「噓……看那邊！半夜兩點博學者艾德里安居然獨自溜進礦坑口，還在對著深淵裂隙行跪拜禮！」',
+          '古史博學者 艾德里安（低語）：「偉大的終焉魔王伊格納洛斯啊，愚蠢的冒險者與聖輝騎士團已經替我解開了鎖鏈，您的坐騎『滅世炎龍卡爾德隆』即將甦醒……」',
+          '🔍 已目擊隱藏真相【深夜的跟蹤】！'
+        ]);
+      };
+
+      const origLoadMineFloor = loadMineFloor;
+      loadMineFloor = function(floorNum, spawnAtDownStairs = false, remoteBlueprint = null) {
+        const st = ensureStoryState();
+        if (floorNum >= 91 && !isTrueEndingUnlocked()) {
+          showToast('🔒 尚未集齊 7 塊封印石板與 3 大隱藏真相，無法開啟 B91～B100【終焉深淵】！');
+          floorNum = 90;
+        }
+        origLoadMineFloor(floorNum, spawnAtDownStairs, remoteBlueprint);
+        if (st.mainStage === 0) st.mainStage = 1;
+        if (floorNum >= 10 && !st.flags.b10RelicLooted) {
+          st.flags.b10RelicLooted = true;
+          showToast('🕯️ 在 B10 發現【燒焦的祭儀法器】！可點擊左上角《銀嶺秘境》面板找草藥師漢娜揭開灼傷真相');
+        }
+        if (floorNum >= 30 && st.mainStage < 2) {
+          st.mainStage = 2;
+          openDialogue('古代礦工的日誌 (B30)', '被淹沒的千年前真相', '📔', [
+            '「銀嶺曆 312 年：我們的十字鎬挖穿了最底層的熔岩……那頭毀滅半個王國的『滅世炎龍卡爾德隆』衝出了地表！」',
+            '「全大陸的英雄們用血肉將巨龍逼回地底，並將這座礦坑改造成巨大的深淵牢籠。後世子孫啊，千萬別碰觸 B40～B80 的魔力節點，否則封印將會崩潰……」'
+          ]);
+        }
+        if (floorNum === 80 && st.mainStage < 3) {
+          st.mainStage = 3;
+          const sawThrough = isTrueEndingUnlocked();
+          openDialogue('古史博學者 艾德里安·韋斯', '【轉】撕裂的假面與終焉的低語', '🔥', [
+            '轟隆隆隆——！！當最後一個魔力節點被觸動，撕裂雪山的大地震瞬間爆發，滾燙的岩漿湧入迷宮，千年封印徹底崩壞！',
+            '古史博學者艾德里安在岩漿紅光中露出狂熱扭曲的笑容：「哈哈哈！感謝你們幫我解開了古代英雄的枷鎖！那頭毀滅半個王國的滅世炎龍，不過是吾主『終焉魔王伊格納洛斯』的坐騎罷了！」',
+            sawThrough
+              ? `「什麼？！你……你們竟然早就透過薇薇安與原版石板看穿了我的偽裝，還集齊了 7 塊古代封印石板？！」\n聖輝騎士·亞瑟舉盾怒吼：「騎士團掩護村民撤退！${myPlayerName}，我們去 B90 斬殺炎龍、徹底封印終焉魔王！」`
+              : '聖輝騎士·亞瑟舉起重盾組成鋼鐵防線：「可惡，我們被騙了！騎士團死守防線掩護鎮民撤退！冒險者，快前往 B90 阻止博學者與甦醒的炎龍！」'
+          ]);
+        }
+        saveStoryState();
+        refreshSilverpeakTrackerUI();
+      };
+
+      const origDamageEnemy = damageEnemy;
+      damageEnemy = function(en, rawDmg, isCrit = false, fromRemote = false) {
+        const wasAlive = en && en.hp > 0;
+        origDamageEnemy(en, rawDmg, isCrit, fromRemote);
+        if (wasAlive && en && en.hp <= 0 && !en.isDownedCorpse) {
+          const st = ensureStoryState();
+          if (en.isBoss) {
+            if (currentFloor === 40 && !st.tablets.t1_b40) {
+              st.tablets.t1_b40 = true;
+              showToast('📜 擊敗 B40 節點守護者，獲得【古代封印石板 #1】！');
+            } else if (currentFloor === 50 && !st.tablets.t2_b50) {
+              st.tablets.t2_b50 = true;
+              showToast('📜 擊敗 B50 節點守護者，獲得【古代封印石板 #2】！');
+            } else if (currentFloor === 60 && !st.tablets.t3_b60) {
+              st.tablets.t3_b60 = true;
+              showToast('📜 擊敗 B60 節點守護者，獲得【古代封印石板 #3】！');
+            } else if (currentFloor === 70 && !st.tablets.t4_b70) {
+              st.tablets.t4_b70 = true;
+              showToast('📜 擊敗 B70 節點守護者，獲得【古代封印石板 #4】！');
+            } else if (currentFloor === 90) {
+              st.mainStage = 4;
+              if (isTrueEndingUnlocked()) {
+                openDialogue('滅世炎龍 卡爾德隆（已斬殺）', '🌅 真結局路線開啟：通往 B91～B100 終焉深淵', '🐉', [
+                  '你們在千鈞一髮之際擊殺了狂熱的古史博學者，並憑藉完整的古代知識斬殺了末日巨獸【滅世炎龍 卡爾德隆】！',
+                  '7 塊古代封印石板在你們手中綻放耀眼光芒，開啟了通往 B91～B100【終焉深淵】的隱藏大門！跨過巨龍的屍骸，去 B100 徹底鎮壓【終焉魔王 伊格納洛斯】吧！'
+                ]);
+              } else {
+                window.previewEndingCutscene(false);
+              }
+            }
+            saveStoryState();
+            saveHeroProfileToStorage();
+            refreshSilverpeakTrackerUI();
+          }
+        }
+      };
+
+      function getBestFriendMercName() {
+        const counts = player.mercHireCounts || {};
+        let bestId = null, maxCnt = 0;
+        Object.entries(counts).forEach(([id, c]) => {
+          if (c > maxCnt) { maxCnt = c; bestId = id; }
+        });
+        if (bestId && typeof MERC_ROSTER_TEMPLATES !== 'undefined') {
+          const tpl = MERC_ROSTER_TEMPLATES.find(t => t.rosterId === bestId);
+          if (tpl) return tpl.name;
+        }
+        return '女武神·希雅';
+      }
+
+      window.previewEndingCutscene = function(isTrueEnding) {
+        const st = ensureStoryState();
+        document.getElementById('silverpeakGuideModal').classList.add('hidden');
+        if (!isTrueEnding) {
+          st.seenNormalEnding = true;
+          let bestFriend = getBestFriendMercName();
+          const firstSacrifice = (bestFriend.includes('洛奇') || player.avatarId === 'assassin_m') ? '狂戰士·布洛克' : '暗影刺客·洛奇';
+          const secondSacrifice = (bestFriend.includes('薇薇安') || player.avatarId === 'mage_f') ? '蒼藍劍士·雷恩' : '星穹術士·薇薇安';
+          if (bestFriend.includes('洛奇') || bestFriend.includes('薇薇安')) bestFriend = '蒼藍劍士·雷恩';
+
+          openDialogue('【結局一】風雪中的鎮魂歌（普通結局）', '解謎與石板未齊 · 悲壯的斷後抉擇', '❄️', [
+            '冒險者與夥伴們在千鈞一髮之際擊敗了古史博學者，並拚盡全力將【滅世炎龍 卡爾德隆】逼回熔岩深處。然而因未能集齊 7 塊封印石板與完整知識，這份鎮壓撐不了多久，暴怒的地底魔物如海嘯般狂湧而上！',
+            `為了讓晨曦鎮民與『${myPlayerName}』活著逃出生天，並肩作戰的夥伴們做出了抉擇——\n【${firstSacrifice}】引爆身上的火藥，與魔物群同歸於盡，炸毀了最底層通道；\n【${secondSacrifice}】燃盡生命力張開最後的結界，將自己與獸群永遠封死在礦坑中段！`,
+            `當你護送鎮民抵達北側的傳送石陣時，身邊只剩下與你羈絆最深的老朋友【${bestFriend}】。他將啟動石陣的魔力水晶塞進你手中，自己拔出殘破的武器，退到石陣邊緣擋在深淵入口前。`,
+            `${bestFriend}看著你，沾滿血汙的臉上露出一抹釋然的微笑，像往常在酒館吧台聊天那樣平靜地說道：\n「鎮民的安危就交給你了，好好活下去。」`,
+            '話音剛落，他用力將你推入傳送光芒中，隨即轉身引爆了傳送石陣！無人的晨曦鎮從此與世隔絕，連同老朋友最後的背影一同被漫天風雪永久掩埋……\n（💡 勇者鬥惡龍式存檔保護：回到決戰前存檔點，可補齊 7 塊石板與 3 大隱藏劇情，再次挑戰真結局救回所有夥伴！）'
+          ], [
+            {
+              label: '🔙 回到決戰前存檔點（繼續收集 7 塊石板挑戰真結局）',
+              action: () => { loadMountainVillage(false); }
+            },
+            {
+              label: '🔄 踏上二周目輪迴（繼承等級/裝備/羈絆，怪強度提升）',
+              action: () => { window.startNewGamePlusCycle(); }
+            }
+          ]);
+        } else {
+          st.seenTrueEnding = true;
+          openDialogue('【結局二】破曉的晨曦（真結局）', '全員生還 · 終焉深淵的完全封印', '🌅', [
+            `憑藉集齊的 7 塊古代封印石板與看穿陰謀的智慧，『${myPlayerName}』與夥伴們在 B90 徹底斬殺了滅世炎龍卡爾德隆，並跨過巨龍屍骸直墜 B100【終焉深淵】！`,
+            '經過一場驚天動地的慘烈激戰，你們成功擊潰了隱藏的最終頭目【終焉魔王 伊格納洛斯】，並發動全新的完美封印之力，將魔王永遠鎮壓回地獄熔岩的最深處！',
+            '這一次，沒有任何一位夥伴犧牲！聖輝騎士亞瑟、蒼藍劍士雷恩、星穹術士薇薇安、暗影刺客洛奇與所有酒館戰友們肩並肩走出了礦坑，迎接全鎮居民震耳欲聾的歡呼！',
+            '災厄退去，晨曦鎮不再是沒落的礦鎮，而是化身為全大陸最頂尖的自由冒險者公會據點。當破曉的第一道陽光灑落在晨曦大旅店的屋頂，一樓酒館裡舉杯歡慶的笑聲交織著溫暖火光，傳送石陣持續閃耀，隨時準備迎接源源不絕的新戰友！'
+          ], [
+            {
+              label: '🍻 凱旋返回晨曦大旅店（保留完美進度繼續自由冒險）',
+              action: () => {
+                player.gold += 2000;
+                saveHeroProfileToStorage();
+                loadMountainVillage(false);
+              }
+            },
+            {
+              label: '🔄 開啟下一周目輪迴（可在開場直接看穿博學者陰謀！）',
+              action: () => { window.startNewGamePlusCycle(); }
+            }
+          ]);
+        }
+        saveStoryState();
+        saveHeroProfileToStorage();
+      };
+
+      const origTriggerWinScreen = triggerWinScreen;
+      triggerWinScreen = function() {
+        if (isTrueEndingUnlocked()) {
+          window.previewEndingCutscene(true);
+        } else {
+          origTriggerWinScreen();
+        }
+      };
+
+      window.startNewGamePlusCycle = function() {
+        const st = ensureStoryState();
+        st.cycle = (st.cycle || 1) + 1;
+        st.mainStage = 0;
+        Object.keys(st.tablets).forEach(k => st.tablets[k] = false);
+        Object.keys(st.flags).forEach(k => st.flags[k] = false);
+        player.clearedFloors = new Set();
+        saveStoryState();
+        saveHeroProfileToStorage();
+        document.getElementById('silverpeakGuideModal').classList.add('hidden');
+        loadMountainVillage(false);
+        refreshSilverpeakTrackerUI();
+        openDialogue(`🔄 第 ${st.cycle} 周目輪迴開啟`, '繼承等級、神裝與傭兵羈絆', '⏳', [
+          `歡迎踏上第 ${st.cycle} 周目的《銀嶺秘境》！你的等級、裝備、金幣與酒館傭兵僱用羈絆已全數保留。`,
+          '【二周目以上特典】：擁有前世記憶的你，現在去晨曦鎮廣場與「古史博學者 艾德里安」對話時，將可直接選擇【當面揭穿他是終焉教派狂信徒】的隱藏分支！'
+        ]);
+      };
+
+      const origLoadMountainVillage = loadMountainVillage;
+      loadMountainVillage = function(spawnAtMineGate = false) {
+        origLoadMountainVillage(spawnAtMineGate);
+        ensureStoryState();
+        spawnVillageNPC(
+          'scholar_adrian',
+          '古史博學者 艾德里安',
+          '📜',
+          'mayor',
+          16.2,
+          -1.5,
+          [
+            '「年輕的冒險者，歡迎來到銀嶺秘境的晨曦鎮。我是研究古代防禦工事的博學者艾德里安·韋斯。」',
+            '「千年前全大陸英雄在礦坑深處設下了鎮壓『滅世炎龍』的封印。如今尋寶熱潮讓封印鬆動，我需要你深入 B40、B50、B60、B70 替我『重置魔力節點』……」'
+          ],
+          '📜 主線引路人'
+        );
+        const adrianInter = interactables.find(it => it.npcId === 'scholar_adrian');
+        if (adrianInter) {
+          adrianInter.type = 'custom_adrian';
+          adrianInter.prompt = '📜 與「古史博學者 艾德里安」交談（主線：深淵的呼喚）';
+        }
+        refreshSilverpeakTrackerUI();
+      };
+
+      const origTriggerInteraction = triggerInteraction;
+      triggerInteraction = function() {
+        if (currentNearestInteractable && currentNearestInteractable.type === 'custom_adrian') {
+          const st = ensureStoryState();
+          if (st.mainStage === 0) st.mainStage = 1;
+          saveStoryState();
+          refreshSilverpeakTrackerUI();
+          const choices = [
+            {
+              label: '📖 開啟《銀嶺秘境》石板與支線任務指南',
+              action: () => window.openSilverpeakQuestGuideModal()
+            }
+          ];
+          if (st.cycle >= 2 || st.flags.translationError) {
+            choices.unshift({
+              label: '⚡ 【看穿真相】「別裝了艾德里安！你想解除封印釋放滅世炎龍與終焉魔王！」',
+              action: () => {
+                openDialogue('古史博學者 艾德里安', '被看穿的終焉狂信徒', '😈', [
+                  '艾德里安臉上的和藹笑容瞬間凝固，眼神閃過一絲陰鷙的紅光：「呵呵呵……有趣，看來你並非普通的盲目冒險者。既然你看穿了，那我們就在 B80 的炎龍封印核心見真章吧！」'
+                ]);
+              }
+            });
+          }
+          openDialogue(
+            '古史博學者 艾德里安·韋斯',
+            '和藹睿智的古代秘史學者',
+            '📜',
+            [
+              `「冒險者『${myPlayerName}』，幸好有你加入！聖輝騎士團雖然武力強大，卻完全不懂地下百層防禦工事的符文機關。」`,
+              '「請務必幫我前往 B40、B50、B60、B70 擊敗節點守護者並重置機關。千萬別相信黑市商人或那些迷信鎮民的流言蜚語，一切都是為了鞏固封印啊……」'
+            ],
+            choices
+          );
+          return;
+        }
+        origTriggerInteraction();
+      };
+
+      // =========================================================================
+      // 17. 魔物獵人世界 / 霧鎖王國 風格極簡全螢幕主畫面 (修復所有按鈕層級與反應)
+      // =========================================================================
+      const oldTitle = document.getElementById('titleScreen');
+      const heroImgEl = oldTitle ? oldTitle.querySelector('img') : null;
+      const bgImgSrc = heroImgEl ? heroImgEl.getAttribute('src') : '';
+
+      if (oldTitle) {
+        const innerCard = oldTitle.firstElementChild;
+        if (innerCard) {
+          const promoP = innerCard.querySelector('p.text-stone-300.leading-relaxed');
+          if (promoP) promoP.classList.add('hidden');
+          const allGrids = innerCard.querySelectorAll('.grid');
+          allGrids.forEach((g) => {
+            if (g.id !== 'saveSlotsGrid' && g.id !== 'avatarGridContainer') {
+              g.classList.add('hidden');
+            }
+          });
+          const topRightBar = innerCard.querySelector('.absolute.top-3.right-3');
+          if (topRightBar) {
+            topRightBar.innerHTML = '<button id="backToMhwMainBtn" type="button" class="gothic-btn px-3.5 py-1.5 rounded-lg text-xs font-bold text-amber-200 shadow-lg">← 返回主標題畫面</button>';
+          }
+        }
+        oldTitle.classList.add('hidden');
+      }
+
+      const mhwOverlay = document.createElement('div');
+      mhwOverlay.id = 'mhwTitleOverlay';
+      mhwOverlay.innerHTML = `
+        <div class="absolute inset-0 -z-10 overflow-hidden bg-black pointer-events-none">
+          <img src="${bgImgSrc}" alt="銀嶺秘境" class="w-full h-full object-cover opacity-80 scale-105" />
+          <div class="absolute inset-0 bg-gradient-to-r from-black/90 via-black/55 to-transparent"></div>
+          <div class="absolute inset-0 bg-gradient-to-t from-black/90 via-transparent to-black/40"></div>
+        </div>
+
+        <div class="p-6 sm:p-10 flex items-start justify-between">
+          <div class="space-y-2">
+            <p class="font-cinzel text-xs sm:text-sm tracking-[0.35em] text-amber-400/90 uppercase drop-shadow">
+              SILVERPEAK SANCTUARY · 3D ACTION RPG
+            </p>
+            <h1 class="text-4xl sm:text-6xl font-black tracking-widest text-amber-100 drop-shadow-[0_6px_20px_rgba(0,0,0,0.95)] font-cinzel">
+              銀嶺秘境
+            </h1>
+            <p class="text-sm sm:text-lg font-bold tracking-[0.25em] text-amber-300/90 pl-1">
+              — 銀嶺的餘燼與破曉 —
+            </p>
+          </div>
+
+          <div class="gothic-panel px-4 py-2.5 rounded-xl border border-amber-500/40 text-right">
+            <div class="text-[10px] uppercase tracking-widest text-amber-400/80 font-cinzel">Current Adventurer</div>
+            <div id="mhwCurrentHeroBadge" class="text-xs sm:text-sm font-bold text-amber-100 mt-0.5">讀取進度中...</div>
+          </div>
+        </div>
+
+        <div class="px-6 sm:px-12 my-auto max-w-md w-full space-y-2.5">
+          <button id="mhwBtnContinue" type="button" class="mhw-menu-btn">
+            <span>⚔️ 繼續遊戲</span>
+            <span id="mhwContinueSub" class="mhw-sub-label">CONTINUE · 以目前角色踏入銀嶺晨曦鎮</span>
+          </button>
+
+          <button id="mhwBtnNewOrSlot" type="button" class="mhw-menu-btn">
+            <span>🎭 重新開始 ／ 角色進度槽</span>
+            <span class="mhw-sub-label">NEW GAME & CHARACTER SLOTS (1~5)</span>
+          </button>
+
+          <button id="mhwBtnStoryLog" type="button" class="mhw-menu-btn">
+            <span>📜 銀嶺秘史與任務指南</span>
+            <span class="mhw-sub-label">STORY ARCHIVE & SEAL TABLETS</span>
+          </button>
+
+          <button id="mhwBtnOptions" type="button" class="mhw-menu-btn">
+            <span>⚙️ 系統設定 (OPTIONS)</span>
+            <span class="mhw-sub-label">AUDIO, GRAPHICS & CONTROLS</span>
+          </button>
+        </div>
+
+        <div class="p-6 sm:p-10 flex flex-wrap items-center justify-between gap-2 text-xs text-stone-400">
+          <div class="flex items-center gap-3">
+            <span class="px-2 py-0.5 rounded bg-amber-950/80 border border-amber-500/40 text-amber-200 font-semibold">操作提示</span>
+            <span>WASD / 點擊地面移動 · 滑鼠拖曳視角 · 左鍵普攻 / 右鍵特殊技 · F 互動</span>
+          </div>
+          <div class="font-cinzel tracking-widest text-[11px] text-stone-500">
+            VER 2.2 · SILVERPEAK SANCTUARY EDITION
+          </div>
+        </div>
+      `;
+      document.body.appendChild(mhwOverlay);
+
+      const optModal = document.createElement('div');
+      optModal.id = 'mhwOptionsModal';
+      optModal.className = 'hidden fixed inset-0 z-[70] flex items-center justify-center p-4 bg-black/80';
+      optModal.innerHTML = `
+        <div class="gothic-panel w-full max-w-md rounded-2xl p-6 border-2 border-amber-500/70 space-y-5">
+          <div class="flex items-center justify-between border-b border-stone-700 pb-3">
+            <div>
+              <h3 class="text-lg font-black text-amber-200">⚙️ 系統設定 (OPTIONS)</h3>
+              <p class="text-xs text-stone-400">音效、背景音樂、畫質與設定圖鑑</p>
+            </div>
+            <button id="closeMhwOptBtn" type="button" class="gothic-btn px-3 py-1 rounded-lg text-xs">✕ 關閉</button>
+          </div>
+
+          <div class="space-y-3 text-xs sm:text-sm">
+            <div class="p-3 rounded-xl bg-stone-950/90 border border-stone-800 flex items-center justify-between">
+              <div>
+                <div class="font-bold text-amber-100">🔊 遊戲音效與背景音樂</div>
+                <div class="text-[11px] text-stone-400">切換城鎮／地城 BGM 與戰鬥音效開關</div>
+              </div>
+              <button id="mhwOptAudioBtn" type="button" class="gothic-btn px-3.5 py-1.5 rounded-lg font-bold text-amber-200">
+                🔊 音效：開啟
+              </button>
+            </div>
+
+            <div class="p-3 rounded-xl bg-stone-950/90 border border-stone-800 flex items-center justify-between gap-3">
+              <div>
+                <div class="font-bold text-amber-100">🎵 BGM 音樂音量</div>
+                <div class="text-[11px] text-stone-400">調整背景音樂音量大小</div>
+              </div>
+              <input id="mhwOptBgmSlider" type="range" min="0" max="100" value="45" class="w-28 accent-amber-400 cursor-pointer" />
+            </div>
+
+            <div class="p-3 rounded-xl bg-stone-950/90 border border-stone-800 flex items-center justify-between">
+              <div>
+                <div class="font-bold text-amber-100">✨ 3D 渲染畫質模式</div>
+                <div class="text-[11px] text-stone-400">切換等身重製版材質與經典模式</div>
+              </div>
+              <button id="mhwOptVisualBtn" type="button" class="gothic-btn px-3.5 py-1.5 rounded-lg font-bold text-emerald-300">
+                重製美化版
+              </button>
+            </div>
+
+            <div class="p-3 rounded-xl bg-stone-950/90 border border-stone-800 flex items-center justify-between">
+              <div>
+                <div class="font-bold text-amber-100">📖 美術與世界觀設定圖鑑</div>
+                <div class="text-[11px] text-stone-400">檢視主角、村民與地城魔物設定圖</div>
+              </div>
+              <button id="mhwOptCodexBtn" type="button" class="gothic-btn px-3.5 py-1.5 rounded-lg font-bold text-sky-300">
+                開啟圖鑑
+              </button>
+            </div>
+          </div>
+
+          <div class="pt-2 border-t border-stone-800 text-right">
+            <button id="confirmMhwOptBtn" type="button" class="gothic-btn px-5 py-2 rounded-xl text-xs font-bold text-amber-200">
+              ✓ 儲存並返回
+            </button>
+          </div>
+        </div>
+      `;
+      document.body.appendChild(optModal);
+
+      function syncMhwHeroSummary() {
+        const badge = document.getElementById('mhwCurrentHeroBadge');
+        const sub = document.getElementById('mhwContinueSub');
+        const av = getAvatarPreset(player.avatarId);
+        const hName = myPlayerName || '亞爾斯';
+        const infoText = `${av.icon} ${hName} · ${av.name} (Lv.${player.level || 1} · 存檔 ${currentSaveSlotIdx + 1})`;
+        if (badge) badge.textContent = infoText;
+        if (sub) sub.textContent = `CONTINUE · ${infoText}`;
+      }
+
+      function enterGameDirectly() {
+        mhwOverlay.classList.add('mhw-hidden');
+        if (oldTitle) oldTitle.classList.add('hidden');
+        ensureAudio();
+        const enteredName = document.getElementById('createHeroNameInput')?.value.trim();
+        if (enteredName) {
+          myPlayerName = enteredName;
+          const mpInput = document.getElementById('mpNameInput');
+          if (mpInput) mpInput.value = myPlayerName;
+        }
+        const isFirstEntry = !player.hasCompletedIntro;
+        player.hasCompletedIntro = true;
+        saveHeroProfileToStorage();
+        buildHeroMesh();
+        rebuildActiveMercenaryMeshes();
+        broadcastMyState(true);
+        renderMpPlayerList();
+        const av = getAvatarPreset(player.avatarId);
+        if (isFirstEntry) {
+          startTravelerArrivalPrologue();
+        } else {
+          showToast(`⚔️ 歡迎回來，「${myPlayerName}」（${av.name}）！已讀取存檔 ${currentSaveSlotIdx + 1}`);
+        }
+      }
+
+      // 1. 點擊「⚔️ 繼續遊戲」：直接隱藏主選單並進入 3D 遊戲！
+      document.getElementById('mhwBtnContinue').addEventListener('click', () => {
+        playSound('levelup');
+        enterGameDirectly();
+      });
+
+      // 2. 點擊「🎭 重新開始 / 角色進度槽」：開啟 z-index 65 的 5 槽存檔與創角介面
+      document.getElementById('mhwBtnNewOrSlot').addEventListener('click', () => {
+        playSound('potion');
+        renderSaveSlotsGrid();
+        renderAvatarSelectionCards();
+        if (oldTitle) oldTitle.classList.remove('hidden');
+      });
+
+      const backBtn = document.getElementById('backToMhwMainBtn');
+      if (backBtn) {
+        backBtn.addEventListener('click', () => {
+          playSound('potion');
+          if (oldTitle) oldTitle.classList.add('hidden');
+          syncMhwHeroSummary();
+        });
+      }
+
+      const origStartBtn = document.getElementById('startJourneyBtn');
+      if (origStartBtn) {
+        origStartBtn.addEventListener('click', () => {
+          mhwOverlay.classList.add('mhw-hidden');
+          if (oldTitle) oldTitle.classList.add('hidden');
+        });
+      }
+
+      // 3. 點擊「📜 銀嶺秘史與任務指南」：開啟 z-index 70 的《銀嶺秘境》指南視窗
+      document.getElementById('mhwBtnStoryLog').addEventListener('click', () => {
+        playSound('potion');
+        window.openSilverpeakQuestGuideModal();
+      });
+
+      // 4. 點擊「⚙️ 系統設定 (OPTIONS)」
+      document.getElementById('mhwBtnOptions').addEventListener('click', () => {
+        playSound('potion');
+        optModal.classList.remove('hidden');
+      });
+      document.getElementById('closeMhwOptBtn').addEventListener('click', () => {
+        optModal.classList.add('hidden');
+      });
+      document.getElementById('confirmMhwOptBtn').addEventListener('click', () => {
+        optModal.classList.add('hidden');
+      });
+
+      document.getElementById('mhwOptAudioBtn').addEventListener('click', (e) => {
+        const muteBtn = document.getElementById('muteAudioBtn');
+        if (muteBtn) muteBtn.click();
+        e.currentTarget.textContent = soundMuted ? '🔇 音效：靜音' : '🔊 音效：開啟';
+      });
+
+      document.getElementById('mhwOptBgmSlider').addEventListener('input', (e) => {
+        bgmVolume = Number(e.target.value) / 100;
+        syncBgmPlayback();
+      });
+
+      document.getElementById('mhwOptVisualBtn').addEventListener('click', (e) => {
+        const visBtn = document.getElementById('toggleVisualModeBtn');
+        if (visBtn) visBtn.click();
+        e.currentTarget.textContent = isRemasteredMode ? '重製美化版' : '經典懷舊版';
+      });
+
+      document.getElementById('mhwOptCodexBtn').addEventListener('click', () => {
+        optModal.classList.add('hidden');
+        const codexBtn = document.getElementById('openCodexBtn');
+        if (codexBtn) codexBtn.click();
+      });
+
+      // 遊戲內左上角「⚙️ 選單」抽屜加入「🏞️ 返回主標題」按鈕
+      const hudDrawer = document.getElementById('hudMenuDrawer');
+      if (hudDrawer) {
+        const btnContainer = hudDrawer.querySelector('.flex.flex-wrap.items-center');
+        if (btnContainer) {
+          const toTitleBtn = document.createElement('button');
+          toTitleBtn.type = 'button';
+          toTitleBtn.className = 'gothic-btn px-2.5 py-1 rounded-lg text-amber-300 font-semibold';
+          toTitleBtn.textContent = '🏞️ 返回主標題';
+          toTitleBtn.addEventListener('click', () => {
+            hudDrawer.classList.add('hidden');
+            syncMhwHeroSummary();
+            mhwOverlay.classList.remove('mhw-hidden');
+          });
+          btnContainer.appendChild(toTitleBtn);
+        }
+      }
+
+      // 在 window.onload 完成存檔讀取後同步更新主標題的角色資訊徽章
+      const prevOnload = window.onload;
+      window.onload = () => {
+        if (typeof prevOnload === 'function') prevOnload();
+        recalcPlayerMaxStats(false);
+        syncMhwHeroSummary();
+        refreshSilverpeakTrackerUI();
+      };
+    })();
+
   </script>
 </body>
 </html>
